@@ -1,99 +1,59 @@
-MovizApp 🎬
+# 🎬 MovizApp
 
-MovizApp is an Android movie browsing app built with Kotlin and Jetpack Compose. It fetches movies from an online API (like TMDB) and displays them in a modern, interactive UI. Users can view movie posters, titles, and descriptions with a read more/read less toggle for long overviews.
+![GitHub Repo stars](https://img.shields.io/github/stars/your-username/MovizApp?style=social)
+![GitHub forks](https://img.shields.io/github/forks/your-username/MovizApp?style=social)
+![GitHub issues](https://img.shields.io/github/issues/your-username/MovizApp)
+![GitHub license](https://img.shields.io/github/license/your-username/MovizApp)
 
-Features ✨
+---
 
-Fetches popular movies from an online API.
+## 🚀 About
 
-Displays movies in cards with poster, title, and overview.
+**MovizApp** is an **Android movie browsing app** built with **Kotlin & Jetpack Compose**.  
+It fetches popular movies from TMDB API and displays them in **beautiful, interactive movie cards**.  
+Users can expand/collapse movie descriptions using a **Read more / Read less** toggle, providing a clean and modern UI.
 
-Read more / Read less toggle for long descriptions.
+---
 
-Modern UI using Jetpack Compose & Material3.
+## ✨ Features
 
-Smooth animation when expanding/collapsing text.
+- Browse **popular movies** from an online API (TMDB).  
+- **Modern card UI** with movie posters, titles, and descriptions.  
+- **Read more / Read less** toggle for long movie overviews.  
+- **Smooth animations** for expanding/collapsing text.  
+- Built with **Jetpack Compose & Material3**.  
+- **Coil** for asynchronous image loading.
 
-Uses Coil for image loading.
+---
 
-Screenshots
+## 📸 Screenshots
 
-(You can add screenshots of your app here)
+![Movie List](https://github.com/user-attachments/assets/5e78bc34-f756-4854-b911-60152047f51a)  
+*Browse movies in a clean card layout*
 
-Architecture 🏗️
+*(Add more screenshots or GIFs here to showcase Read more / Read less animation)*
 
-MVVM Architecture
+---
 
-Repository → Handles API calls and data fetching.
+## 🏗 Architecture
 
-ViewModel → Exposes movie data to UI.
+**MVVM Pattern**  
+- **Repository** → Handles API calls and data fetching.  
+- **ViewModel** → Exposes movie data to the UI.  
+- **UI (Jetpack Compose)** → Displays movie cards and grids.  
 
-UI (Compose) → Displays movies in cards and grids.
+**Libraries Used:**  
+- Jetpack Compose & Material3  
+- Coil (image loading)  
+- Retrofit (API calls)  
+- Kotlin Coroutines  
+- Room (optional, for local caching)
 
-Jetpack Compose → For modern declarative UI.
+---
 
-Coil → For asynchronous image loading.
+## ⚡ Setup Instructions
 
-Material3 → Modern UI components.
-
-Room (Optional) → For local caching of movies.
-
-Setup Instructions ⚡
-
-Clone the repository
-
+1. **Clone the repository**
+```bash
 git clone https://github.com/your-username/MovizApp.git
 cd MovizApp
-
-
-Open in Android Studio
-Open the project folder in Android Studio Arctic Fox or newer.
-
-Add API Key
-Replace YOUR_API_KEY in your Repository or Retrofit setup with your TMDB API key.
-
-Build & Run
-Connect an Android device or start an emulator and run the app.
-
-Dependencies 📦
-
-Jetpack Compose – UI toolkit for Android.
-
-Material3 – Modern Material Design components.
-
-Coil – Image loading library.
-
-Retrofit – For API calls.
-
-Room – Local database (optional).
-
-Kotlin Coroutines – For asynchronous calls.
-
-Usage 🎮
-
-Launch the app.
-
-Browse popular movies in a scrollable list or grid layout.
-
-Tap Read more to expand the movie overview.
-
-Tap Read less to collapse the text.
-
-Posters are loaded asynchronously from the API.
-
-Future Improvements 🚀
-
-Add search functionality.
-
-Add favorites and watchlist using Room database.
-
-Implement grid-only Netflix-style poster view with overlays.
-
-Add shimmer loading placeholders for posters.
-
-Add pagination to fetch more movies.
-
-License 📝
-
-This project is licensed under the MIT License – see the LICENSE
- file for details.
