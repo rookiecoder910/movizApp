@@ -1,5 +1,6 @@
 package com.example.movizapp.screens
 
+import MovieItem
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import com.example.movizapp.retrofit.Movie

@@ -23,10 +23,14 @@ var movies by mutableStateOf<List<Movie>>(emptyList())
                  .getPopularMovies("80f9720370f5ec06ee02481601e89a13",1)
              //assign the fetched data to the 'movies' variable
              movies=moviesFromApi
+             //insert the fetched data into the ROOM DB
+             repository.insertMoviesIntoDB(moviesFromApi)
          }
          catch (e:Exception){
              //fetch the data from ROOM DB
-             e.printStackTrace()
+             moviesFromRoomDb=repository.moviesFromDB()
+             //assign the fetched data to the 'movies' variable
+             movies=moviesFromRoomDb
          }
 
       }
@@ -35,3 +39,6 @@ var movies by mutableStateOf<List<Movie>>(emptyList())
 //the online movies
 var moviesFromApi by mutableStateOf<List<Movie>>(emptyList())
 private set
+//the offline movies
+var moviesFromRoomDb by mutableStateOf<List<Movie>>(emptyList())
+private set  //only the viewmodel can change the value of movies
