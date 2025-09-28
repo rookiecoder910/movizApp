@@ -28,10 +28,10 @@ Users can expand/collapse movie descriptions using a **Read more / Read less** t
 
 ## 📸 Screenshots
 
-![Movie List](https://github.com/user-attachments/assets/5e78bc34-f756-4854-b911-60152047f51a)  
+<img src="https://github.com/user-attachments/assets/5e78bc34-f756-4854-b911-60152047f51a" alt="Movie List" width="400"/>
+
 *Browse movies in a clean card layout*
 
-*(Add more screenshots or GIFs here to showcase Read more / Read less animation)*
 
 ---
 
