@@ -4,19 +4,30 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.movizapp.retrofit.Movie
 import kotlinx.coroutines.InternalCoroutinesApi
 import kotlinx.coroutines.internal.synchronized
-//used to prevent multiple instances of database opening at the same time
-@Database(entities = [Movie::class], version = 1)
+
+
+@Database(entities = [Movie::class], version = 2)
 abstract class MoviesDb : RoomDatabase() {
     abstract val movieDao: MovieDAO
 
     companion object {
-        //volatile means it is immediately visible to all threads
-        //prevents any possible race conditions in multithreading
         @Volatile
         private var INSTANCE: MoviesDb? = null
+
+
+        val MIGRATION_1_2: Migration = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // SQL command to add the new 'vote_average' column.
+                // It must be nullable or have a DEFAULT value, as existing rows will be missing it.
+                db.execSQL("ALTER TABLE movies_table ADD COLUMN vote_average REAL NOT NULL DEFAULT 0.0")
+            }
+        }
+
         @OptIn(InternalCoroutinesApi::class)
         fun getInstance(context: Context): MoviesDb {
             synchronized(lock = this) {
@@ -26,11 +37,13 @@ abstract class MoviesDb : RoomDatabase() {
                         context = context.applicationContext,
                         MoviesDb::class.java,
                         "movies_db"
-                    ).build()
+                    )
+
+                        .addMigrations(MIGRATION_1_2)
+                        .build()
+                    INSTANCE = instance
                 }
-
                 return instance
-
             }
         }
     }
