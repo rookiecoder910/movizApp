@@ -1,4 +1,5 @@
 package com.example.movizapp.screens
+
 import MovieItem
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -6,22 +7,24 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import com.airbnb.lottie.compose.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.airbnb.lottie.compose.*
 import com.example.movizapp.viewmodel.MovieViewModel
-//Composable function to display the list of movies
-//no need for observe as state .we are not using
-//livedata we are using mutable state of
+
 @Composable
 fun MovieScreen(viewModel: MovieViewModel) {
-    // Get the movie list state (observe changes)
-    val movies = viewModel.movies
 
-    // Lottie Composition setup (assuming you put the Lottie file in assets)
+    val movies = viewModel.movies
+    val searchResults = viewModel.searchResults
+
+
+    val displayList = if (searchResults.isNotEmpty()) searchResults else movies
+
+
     val composition by rememberLottieComposition(
         LottieCompositionSpec.Asset("loading.json")
     )
@@ -31,9 +34,8 @@ fun MovieScreen(viewModel: MovieViewModel) {
         iterations = LottieConstants.IterateForever
     )
 
-    // Conditional Display
-    if (movies.isEmpty()) {
 
+    if (displayList.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -45,15 +47,14 @@ fun MovieScreen(viewModel: MovieViewModel) {
             )
         }
     } else {
-        // --- DISPLAY MOVIES STATE ---
+
         LazyColumn(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxSize()
         ) {
-            items(movies.size) { index ->
-                // This is where your MovieItem is used!
-                MovieItem(movie = movies[index])
+            items(displayList.size) { index ->
+                MovieItem(movie = displayList[index])
             }
         }
     }
