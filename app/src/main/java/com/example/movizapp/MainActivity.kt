@@ -17,10 +17,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
+import coil.compose.AsyncImage
 import com.example.movizapp.Repository.Repository
 import com.example.movizapp.screens.MovieScreen
 import com.example.movizapp.ui.theme.MovizAppTheme
@@ -47,8 +49,9 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(padding)
-                            .padding(16.dp)
+
                     ) {
+
                         MovieSearchBar(
                             viewModel = movieViewModel,
                             onSearch = { query ->
@@ -105,13 +108,12 @@ fun AppHeader(
         },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
-            titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            titleContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
             navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         )
     )
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MovieSearchBar(
@@ -122,10 +124,17 @@ fun MovieSearchBar(
     var active by rememberSaveable { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
 
-
     SearchBar(
         query = query,
-        onQueryChange = { query = it },
+        onQueryChange = { newQuery ->
+            query = newQuery
+            if (query.isNotBlank()) {
+                // Trigger live search as user types (optional)
+                viewModel.searchMovies(query)
+            } else {
+                viewModel.searchResults = emptyList()
+            }
+        },
         onSearch = {
             onSearch(query)
             active = false
@@ -137,18 +146,19 @@ fun MovieSearchBar(
             .focusRequester(focusRequester),
         placeholder = { Text("Search movies...") },
         leadingIcon = {
-            if (active) {
-                IconButton(onClick = {
-                    if (query.isEmpty()) {
-                        active = false
-                    } else {
-                        query = ""
-                    }
-                }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            IconButton(onClick = {
+                if (active) {
+                    active = false
+                    query = ""
+                    viewModel.searchResults = emptyList()
+                } else {
+                    active = true
                 }
-            } else {
-                Icon(Icons.Default.Search, contentDescription = "Search icon")
+            }) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search"
+                )
             }
         },
         trailingIcon = {
@@ -159,26 +169,48 @@ fun MovieSearchBar(
             }
         }
     ) {
+        // ✅ Suggestions show BELOW this SearchBar
         val searchResults = viewModel.searchResults
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            items(searchResults.size) { index ->
-                val movie = searchResults[index]
-                ListItem(
-                    headlineContent = { Text(movie.title) },
-                    leadingContent = { Text("⭐ ${movie.vote_average}") },
-                    modifier = Modifier
-                        .clickable {
-                            query = movie.title
-                            onSearch(query)
-                            active = false
-                            // 💡 Clear results after clicking a suggestion
-                            viewModel.searchResults = emptyList()
-                        }
-                        .fillMaxWidth()
-                )
+
+        if (searchResults.isNotEmpty()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(searchResults.size) { index ->
+                    val movie = searchResults[index]
+
+                    ListItem(
+                        headlineContent = { Text(movie.title) },
+                        leadingContent = {
+                            AsyncImage(
+                                model = "https://image.tmdb.org/t/p/w92${movie.poster_path}",
+                                contentDescription = movie.title,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(MaterialTheme.shapes.small)
+                            )
+                        },
+                        supportingContent = {
+                            Text("⭐ ${String.format("%.1f", movie.vote_average)}")
+                        },
+                        modifier = Modifier
+                            .clickable {
+                                query = movie.title
+                                onSearch(query)
+                                active = false
+                                viewModel.searchResults = emptyList()
+                            }
+                            .fillMaxWidth()
+                    )
+                }
             }
+        } else if (query.isNotBlank()) {
+            // Optional empty state
+            Text(
+                text = "No results found",
+                modifier = Modifier.padding(16.dp),
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
 }
