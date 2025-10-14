@@ -28,7 +28,8 @@ Users can expand/collapse movie descriptions using a **Read more / Read less** t
 
 ## 📸 Screenshots
 
-<img src="https://github.com/user-attachments/assets/5e78bc34-f756-4854-b911-60152047f51a" alt="Movie List" width="400"/>
+<img width="338" height="764" alt="image" src="https://github.com/user-attachments/assets/061e1fc5-08ac-421a-8b00-8ea4ddac3cf1" />
+
 
 *Browse movies in a clean card layout*
 
