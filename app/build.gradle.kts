@@ -99,6 +99,9 @@ dependencies {
     // ViewModel
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
     implementation("com.airbnb.android:lottie-compose:6.4.1")
+    implementation("androidx.navigation:navigation-compose:2.8.2")
+    implementation("com.google.accompanist:accompanist-swiperefresh:0.32.0")
+
 
 
 }

@@ -11,7 +11,8 @@ import kotlinx.coroutines.InternalCoroutinesApi
 import kotlinx.coroutines.internal.synchronized
 
 
-@Database(entities = [Movie::class], version = 2)
+// 1. INCREMENT VERSION to 3
+@Database(entities = [Movie::class], version = 3)
 abstract class MoviesDb : RoomDatabase() {
     abstract val movieDao: MovieDAO
 
@@ -23,8 +24,16 @@ abstract class MoviesDb : RoomDatabase() {
         val MIGRATION_1_2: Migration = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // SQL command to add the new 'vote_average' column.
-                // It must be nullable or have a DEFAULT value, as existing rows will be missing it.
+
                 db.execSQL("ALTER TABLE movies_table ADD COLUMN vote_average REAL NOT NULL DEFAULT 0.0")
+            }
+        }
+
+
+        val MIGRATION_2_3: Migration = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+
+                db.execSQL("ALTER TABLE movies_table ADD COLUMN release_date TEXT NOT NULL DEFAULT ''")
             }
         }
 
@@ -39,7 +48,7 @@ abstract class MoviesDb : RoomDatabase() {
                         "movies_db"
                     )
 
-                        .addMigrations(MIGRATION_1_2)
+                        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                         .build()
                     INSTANCE = instance
                 }
