@@ -98,6 +98,7 @@ dependencies {
 
     // ViewModel
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
+    implementation("com.airbnb.android:lottie-compose:6.4.1")
 
 
 }

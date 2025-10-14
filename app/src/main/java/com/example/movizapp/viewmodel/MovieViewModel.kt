@@ -56,7 +56,6 @@ class MovieViewModel(private val repository: Repository) : ViewModel() {
 
     // New state to hold the search results
     var searchResults by mutableStateOf<List<Movie>>(emptyList())
-        private set
 
     // New state to track if a search is active (optional, but useful for UI)
     var isSearching by mutableStateOf(false)

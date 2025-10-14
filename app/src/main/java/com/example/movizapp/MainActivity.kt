@@ -49,7 +49,9 @@ class MainActivity : ComponentActivity() {
                             .padding(padding)
                             .padding(16.dp)
                     ) {
-                        MovieSearchBar(onSearch = { query ->
+                        MovieSearchBar(
+                            viewModel = movieViewModel,
+                            onSearch = { query ->
 
                             movieViewModel.searchMovies(query)
                         })
@@ -58,6 +60,7 @@ class MainActivity : ComponentActivity() {
                         if (movieViewModel.searchResults.isNotEmpty()) {
                             // Show search results in a new composable (e.g., SearchResultScreen)
                             Text("Showing results for: ${movieViewModel.searchResults.size} movies")
+                            MovieScreen(viewModel = movieViewModel)
                             // You'd pass movieViewModel.searchResults here
                         } else {
                             // Show the popular movie list by default
@@ -79,7 +82,7 @@ fun AppHeader(
     TopAppBar(
         title = {
             Text(
-                text = "MovizApp",
+                text = "Moviz",
                 style = MaterialTheme.typography.headlineLarge
             )
         },
@@ -112,6 +115,7 @@ fun AppHeader(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MovieSearchBar(
+    viewModel: MovieViewModel,
     onSearch: (String) -> Unit = {}
 ) {
     var query by rememberSaveable { mutableStateOf("") }
@@ -155,19 +159,22 @@ fun MovieSearchBar(
             }
         }
     ) {
-        // 🔹 You can later replace this LazyColumn with real TMDB search results
+        val searchResults = viewModel.searchResults
         LazyColumn(
             modifier = Modifier.fillMaxWidth()
         ) {
-            items(5) { index ->
+            items(searchResults.size) { index ->
+                val movie = searchResults[index]
                 ListItem(
-                    headlineContent = { Text("Suggestion $index") },
-                    leadingContent = { Icon(Icons.Default.Search, contentDescription = null) },
+                    headlineContent = { Text(movie.title) },
+                    leadingContent = { Text("⭐ ${movie.vote_average}") },
                     modifier = Modifier
                         .clickable {
-                            query = "Suggestion $index"
+                            query = movie.title
                             onSearch(query)
                             active = false
+                            // 💡 Clear results after clicking a suggestion
+                            viewModel.searchResults = emptyList()
                         }
                         .fillMaxWidth()
                 )

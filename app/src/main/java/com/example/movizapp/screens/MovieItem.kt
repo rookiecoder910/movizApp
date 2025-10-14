@@ -14,7 +14,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.movizapp.retrofit.Movie
-
+import com.airbnb.lottie.compose.*
 @Composable
 fun MovieItem(movie: Movie) {
     var expanded by remember { mutableStateOf(false) }
