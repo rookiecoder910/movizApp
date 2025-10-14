@@ -15,17 +15,18 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.movizapp.retrofit.Movie
 import com.airbnb.lottie.compose.*
+
 @Composable
 fun MovieItem(movie: Movie) {
     var expanded by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
-            .padding(8.dp)
+            .padding(vertical = 8.dp)
             .fillMaxWidth()
-            .animateContentSize(), // smooth height change
-        elevation = CardDefaults.cardElevation(12.dp),
-        border = BorderStroke(1.dp, Color.LightGray),
+            .animateContentSize(),
+        elevation = CardDefaults.cardElevation(4.dp),
+        border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f)),
         shape = MaterialTheme.shapes.medium
     ) {
         Row(modifier = Modifier.padding(12.dp)) {
@@ -34,8 +35,8 @@ fun MovieItem(movie: Movie) {
                 contentDescription = movie.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .width(120.dp)
-                    .height(180.dp)
+                    .width(100.dp) // Slightly adjusted width
+                    .height(150.dp) // Adjusted height
                     .clip(MaterialTheme.shapes.medium)
             )
 
@@ -49,10 +50,20 @@ fun MovieItem(movie: Movie) {
                 Text(
                     text = movie.title,
                     style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1
+                    maxLines = 2 // Increased max lines for title
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // ADDED: Release Date
+                Text(
+                    text = "Released: ${movie.release_date}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Filled.Star,
@@ -68,16 +79,16 @@ fun MovieItem(movie: Movie) {
                     )
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
                     text = movie.overview,
                     style = MaterialTheme.typography.bodySmall,
-                    maxLines = if (expanded) Int.MAX_VALUE else 4,
+                    maxLines = if (expanded) Int.MAX_VALUE else 3, // Reduced default lines
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
                     text = if (expanded) "Read less" else "Read more",
