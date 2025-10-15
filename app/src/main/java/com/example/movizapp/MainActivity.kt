@@ -1,5 +1,6 @@
 package com.example.movizapp
 
+import MovizNavGraph
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -8,7 +9,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
@@ -22,9 +22,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.example.movizapp.Repository.Repository
-import com.example.movizapp.screens.MovieScreen
 import com.example.movizapp.ui.theme.MovizAppTheme
 import com.example.movizapp.viewmodel.MovieViewModel
 import com.example.movizapp.viewmodel.MovieViewModelFactory
@@ -35,13 +35,15 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Repository & ViewModel setup
+        // 🧩 Repository & ViewModel setup
         val repository = Repository(applicationContext)
         val viewModelFactory = MovieViewModelFactory(repository)
         val movieViewModel = ViewModelProvider(this, viewModelFactory)[MovieViewModel::class.java]
 
         setContent {
             MovizAppTheme {
+                val navController = rememberNavController()
+
                 Scaffold(
                     topBar = { AppHeader() }
                 ) { padding ->
@@ -49,26 +51,22 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(padding)
-
                     ) {
-
+                        // 🔍 Search bar for movies
                         MovieSearchBar(
                             viewModel = movieViewModel,
                             onSearch = { query ->
+                                movieViewModel.searchMovies(query)
+                            }
+                        )
 
-                            movieViewModel.searchMovies(query)
-                        })
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        if (movieViewModel.searchResults.isNotEmpty()) {
-                            // Show search results in a new composable (e.g., SearchResultScreen)
-                            Text("Showing results for: ${movieViewModel.searchResults.size} movies")
-                            MovieScreen(viewModel = movieViewModel)
-                            // You'd pass movieViewModel.searchResults here
-                        } else {
-                            // Show the popular movie list by default
-                            MovieScreen(viewModel = movieViewModel)
-                        }
+                        // 🧭 Navigation Graph handles all screen routing
+                        MovizNavGraph(
+                            viewModel = movieViewModel,
+                            navController = navController
+                        )
                     }
                 }
             }
@@ -98,7 +96,6 @@ fun AppHeader(
             }
         },
         actions = {
-
             IconButton(onClick = { /* Handle profile click */ }) {
                 Icon(
                     imageVector = Icons.Filled.Person,
@@ -114,6 +111,7 @@ fun AppHeader(
         )
     )
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MovieSearchBar(
@@ -129,7 +127,6 @@ fun MovieSearchBar(
         onQueryChange = { newQuery ->
             query = newQuery
             if (query.isNotBlank()) {
-                // Trigger live search as user types (optional)
                 viewModel.searchMovies(query)
             } else {
                 viewModel.searchResults = emptyList()
@@ -169,16 +166,12 @@ fun MovieSearchBar(
             }
         }
     ) {
-        // ✅ Suggestions show BELOW this SearchBar
         val searchResults = viewModel.searchResults
 
         if (searchResults.isNotEmpty()) {
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            LazyColumn(modifier = Modifier.fillMaxWidth()) {
                 items(searchResults.size) { index ->
                     val movie = searchResults[index]
-
                     ListItem(
                         headlineContent = { Text(movie.title) },
                         leadingContent = {
@@ -205,7 +198,6 @@ fun MovieSearchBar(
                 }
             }
         } else if (query.isNotBlank()) {
-            // Optional empty state
             Text(
                 text = "No results found",
                 modifier = Modifier.padding(16.dp),

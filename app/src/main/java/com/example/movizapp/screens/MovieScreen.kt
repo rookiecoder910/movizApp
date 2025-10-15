@@ -12,11 +12,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.airbnb.lottie.compose.*
 import com.example.movizapp.viewmodel.MovieViewModel
 
 @Composable
-fun MovieScreen(viewModel: MovieViewModel) {
+fun MovieScreen(
+    viewModel: MovieViewModel,
+    navController: NavController
+) {
 
     val movies = viewModel.movies
     val searchResults = viewModel.searchResults
@@ -47,14 +51,16 @@ fun MovieScreen(viewModel: MovieViewModel) {
             )
         }
     } else {
-
         LazyColumn(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxSize()
         ) {
             items(displayList.size) { index ->
-                MovieItem(movie = displayList[index])
+                MovieItem(movie = displayList[index]) { movieId ->
+
+                    navController.navigate("movieDetail/$movieId")
+                }
             }
         }
     }
