@@ -17,14 +17,18 @@ import com.example.movizapp.retrofit.Movie
 import com.airbnb.lottie.compose.*
 
 @Composable
-fun MovieItem(movie: Movie) {
+fun MovieItem(
+    movie: Movie,
+    onClick: (Int) -> Unit // pass movieId on click
+) {
     var expanded by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
             .padding(vertical = 8.dp)
             .fillMaxWidth()
-            .animateContentSize(),
+            .animateContentSize()
+            .clickable { onClick(movie.id) }, // handle click here
         elevation = CardDefaults.cardElevation(4.dp),
         border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f)),
         shape = MaterialTheme.shapes.medium
@@ -35,8 +39,8 @@ fun MovieItem(movie: Movie) {
                 contentDescription = movie.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .width(100.dp) // Slightly adjusted width
-                    .height(150.dp) // Adjusted height
+                    .width(100.dp)
+                    .height(150.dp)
                     .clip(MaterialTheme.shapes.medium)
             )
 
@@ -50,12 +54,11 @@ fun MovieItem(movie: Movie) {
                 Text(
                     text = movie.title,
                     style = MaterialTheme.typography.titleMedium,
-                    maxLines = 2 // Increased max lines for title
+                    maxLines = 2
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // ADDED: Release Date
                 Text(
                     text = "Released: ${movie.release_date}",
                     style = MaterialTheme.typography.bodySmall,
@@ -84,7 +87,7 @@ fun MovieItem(movie: Movie) {
                 Text(
                     text = movie.overview,
                     style = MaterialTheme.typography.bodySmall,
-                    maxLines = if (expanded) Int.MAX_VALUE else 3, // Reduced default lines
+                    maxLines = if (expanded) Int.MAX_VALUE else 3,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
 
