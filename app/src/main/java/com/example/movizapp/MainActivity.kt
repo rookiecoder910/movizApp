@@ -35,7 +35,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // 🧩 Repository & ViewModel setup
+
         val repository = Repository(applicationContext)
         val viewModelFactory = MovieViewModelFactory(repository)
         val movieViewModel = ViewModelProvider(this, viewModelFactory)[MovieViewModel::class.java]
@@ -52,9 +52,10 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .padding(padding)
                     ) {
-                        // 🔍 Search bar for movies
+                        //  Search bar for movies
                         MovieSearchBar(
                             viewModel = movieViewModel,
+
                             onSearch = { query ->
                                 movieViewModel.searchMovies(query)
                             }
@@ -62,7 +63,7 @@ class MainActivity : ComponentActivity() {
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // 🧭 Navigation Graph handles all screen routing
+                        //  Navigation Graph handles all screen routing
                         MovizNavGraph(
                             viewModel = movieViewModel,
                             navController = navController
