@@ -19,6 +19,7 @@ import com.airbnb.lottie.compose.*
 @Composable
 fun MovieItem(
     movie: Movie,
+
     onClick: (Int) -> Unit // pass movieId on click
 ) {
     var expanded by remember { mutableStateOf(false) }

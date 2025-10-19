@@ -30,12 +30,15 @@ fun MovieScreen(
 
 
     val composition by rememberLottieComposition(
-        LottieCompositionSpec.Asset("loading.json")
+        LottieCompositionSpec.Asset("Loading2.json")
     )
 
     val progress by animateLottieCompositionAsState(
         composition,
-        iterations = LottieConstants.IterateForever
+        iterations = LottieConstants.IterateForever,
+        isPlaying = true,
+        speed = 0.5f,
+        restartOnPlay = false
     )
 
 

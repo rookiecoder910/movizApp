@@ -10,6 +10,7 @@ import com.example.movizapp.retrofit.Movie
 @Composable
 fun MovieList(
     movies: List<Movie>,
+
     onMovieClick: (Int) -> Unit
 ) {
     LazyColumn {

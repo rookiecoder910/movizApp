@@ -102,6 +102,8 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.2")
     implementation("com.google.accompanist:accompanist-swiperefresh:0.32.0")
 
+    implementation("com.google.accompanist:accompanist-flowlayout:0.30.1")
+
 
 
 }

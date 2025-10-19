@@ -20,10 +20,11 @@ interface ApiService {
         @Query("query") query: String,
         @Query("page") page: Int=1
     ): MovieResponse
-//    @GET("movie/{movie_id}")
-//    suspend fun getMovieDetail(
-//        @Path("movie_id") movieId: Int,
-//        @Query("api_key") apiKey: String
-//    ): MovieDetails
+    @GET("movie/{movie_id}")
+    suspend fun getMovieDetails(
+        @Path("movie_id") movieId: Int,
+        @Query("api_key") apiKey: String
+    ): MovieDetails
+
 
 }

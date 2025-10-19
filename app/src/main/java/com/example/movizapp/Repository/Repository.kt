@@ -2,6 +2,7 @@ package com.example.movizapp.Repository
 
 import android.content.Context
 import com.example.movizapp.retrofit.Movie
+import com.example.movizapp.retrofit.MovieDetails
 //import com.example.movizapp.retrofit.MovieDetails
 import com.example.movizapp.retrofit.RetrofitInstance
 import com.example.movizapp.room.MovieDAO
@@ -46,8 +47,10 @@ class Repository(context: Context) {
         // This calls the new function in your Retrofit interface
         return RetrofitInstance.api.searchMovies(apiKey, query, page).results
     }
-//    suspend fun getMovieDetail(apiKey: String, movieId: Int): MovieDetails {
-//        return apiService.getMovieDetail(movieId, apiKey)
-//    }
+    //fetching data from tmdb api and present it in moviedetailscreen
+    suspend fun getMovieDetails(apiKey: String, movieId: Int): MovieDetails {
+        return RetrofitInstance.api.getMovieDetails(movieId, apiKey)
+    }
+
 
 }
