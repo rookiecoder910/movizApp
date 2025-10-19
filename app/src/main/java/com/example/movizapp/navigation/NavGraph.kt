@@ -5,6 +5,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.movizapp.screens.MovieDetailScreen
 import com.example.movizapp.screens.MovieScreen
 import com.example.movizapp.viewmodel.MovieViewModel
 

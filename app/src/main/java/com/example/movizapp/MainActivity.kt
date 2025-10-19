@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
@@ -55,6 +56,7 @@ class MainActivity : ComponentActivity() {
                         //  Search bar for movies
                         MovieSearchBar(
                             viewModel = movieViewModel,
+
 
                             onSearch = { query ->
                                 movieViewModel.searchMovies(query)
@@ -97,7 +99,7 @@ fun AppHeader(
             }
         },
         actions = {
-            IconButton(onClick = { /* Handle profile click */ }) {
+            IconButton(onClick = {  }) {
                 Icon(
                     imageVector = Icons.Filled.Person,
                     contentDescription = "Profile"
@@ -199,11 +201,22 @@ fun MovieSearchBar(
                 }
             }
         } else if (query.isNotBlank()) {
-            Text(
-                text = "No results found",
-                modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.bodyMedium
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp)
+                )
+                Text(
+                    text = "No results found",
+                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         }
     }
 }
+
