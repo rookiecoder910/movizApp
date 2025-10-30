@@ -239,7 +239,7 @@ fun MovieSearchBar(
                                 model = "https://image.tmdb.org/t/p/w92${movie.poster_path}",
                                 contentDescription = movie.title,
                                 modifier = Modifier
-                                    .size(48.dp)
+                                    .size(47.dp)
                                     .clip(MaterialTheme.shapes.small)
                             )
                         },
