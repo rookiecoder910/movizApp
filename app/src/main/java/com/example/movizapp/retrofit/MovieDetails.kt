@@ -22,10 +22,22 @@ data class MovieDetails(
     val budget: Long?,
     val revenue: Long?
 )
-data class Genre(val id: Int, val name: String)
-data class SpokenLanguage(val iso_639_1: String, val name: String)
-data class ProductionCompany(val id: Int, val name: String, val logo_path: String?, val origin_country: String)
-data class ProductionCountry(val iso_3166_1: String, val name: String)
+data class Genre(
+    val id: Int, val name: String
+)
+data class SpokenLanguage(
+    val iso_639_1: String,
+    val name: String
+)
+data class ProductionCompany(
+    val id: Int, val name: String,
+    val logo_path: String?,
+    val origin_country: String
+)
+data class ProductionCountry(
+    val iso_3166_1: String,
+    val name: String
+)
 
 
 

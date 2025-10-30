@@ -77,6 +77,8 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3:1.2.0")
+    implementation(libs.androidx.monitor)
+    implementation(libs.androidx.animation)
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
@@ -103,7 +105,16 @@ dependencies {
     implementation("com.google.accompanist:accompanist-swiperefresh:0.32.0")
 
     implementation("com.google.accompanist:accompanist-flowlayout:0.30.1")
+    androidTestImplementation("androidx.test:core:1.5.0")
 
+    // Provides the AndroidJUnit4 test runner (essential for @RunWith(AndroidJUnit4::class))
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
 
+    // Provides InstrumentationRegistry
+    androidTestImplementation("androidx.test:runner:1.5.2")
+
+    // The basic Espresso core is often added as well for UI interaction
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    testImplementation("junit:junit:4.13.2")
 
 }
