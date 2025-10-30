@@ -1,11 +1,10 @@
 package com.example.movizapp
 
-import MovizNavGraph
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -41,7 +40,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-
         val repository = Repository(applicationContext)
         val viewModelFactory = MovieViewModelFactory(repository)
         val movieViewModel = ViewModelProvider(this, viewModelFactory)[MovieViewModel::class.java]
@@ -52,27 +50,42 @@ class MainActivity : ComponentActivity() {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
 
+                var isSearchVisible by rememberSaveable { mutableStateOf(false) }
+
+                // Auto-hide search bar when not on home screen
+                LaunchedEffect(currentRoute) {
+                    if (currentRoute != "home") {
+                        isSearchVisible = false
+                    }
+                }
+
                 Scaffold(
-                    topBar = { AppHeader() }
+                    topBar = {
+                        AppHeader(
+                            onSearchClick = {
+                                if (currentRoute == "home") {
+                                    isSearchVisible = !isSearchVisible
+                                }
+                            }
+                        )
+                    }
                 ) { padding ->
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(padding)
                     ) {
-                        //  Search bar for movies
-                        MovieSearchBar(
-                            viewModel = movieViewModel,
+                        // Show SearchBar only on Home and when toggled visible
+                        if (currentRoute == "home" && isSearchVisible) {
+                            MovieSearchBar(
+                                viewModel = movieViewModel,
+                                onSearch = { query ->
+                                    movieViewModel.searchMovies(query)
+                                }
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
 
-
-                            onSearch = { query ->
-                                movieViewModel.searchMovies(query)
-                            }
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        //  Navigation Graph handles all screen routing
                         MovizNavGraph(
                             viewModel = movieViewModel,
                             navController = navController
@@ -98,7 +111,6 @@ fun AppHeader(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
-
         },
         navigationIcon = {
             IconButton(onClick = onNavigationClick) {
@@ -109,7 +121,13 @@ fun AppHeader(
             }
         },
         actions = {
-            IconButton(onClick = { /* TODO: Handle Profile Click */ }) {
+            IconButton(onClick = onSearchClick) {
+                Icon(
+                    imageVector = Icons.Filled.Search,
+                    contentDescription = "Search"
+                )
+            }
+            IconButton(onClick = { /* TODO: Handle Profile */ }) {
                 Icon(
                     imageVector = Icons.Filled.Person,
                     contentDescription = "Profile"
@@ -117,13 +135,14 @@ fun AppHeader(
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color.Transparent, // Make it transparent to blend with content
+            containerColor = Color.Transparent,
             titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         )
     )
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MovieSearchBar(
@@ -134,58 +153,37 @@ fun MovieSearchBar(
     var active by rememberSaveable { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
 
-    // --- Typing Effect Logic ---
-    val placeholderTexts = listOf(
-        "Search movies...",
-        "Search by title..."
-    )
-
-    // This state holds the text that is currently visible in the placeholder
+    // Typing effect
+    val placeholderTexts = listOf("Search movies...", "Search by title...")
     var displayedText by remember { mutableStateOf(placeholderTexts[0]) }
 
-    // This effect runs the typing animation
     LaunchedEffect(active) {
-        // Only run the animation when the search bar is not active
         if (!active) {
-            var currentTextIndex = 0
+            var index = 0
             while (true) {
-                val targetText = placeholderTexts[currentTextIndex]
-
-
+                val target = placeholderTexts[index]
                 displayedText = ""
-                targetText.forEach { char ->
-                    displayedText += char
-                    delay(151L) // Speed of typing
+                target.forEach { ch ->
+                    displayedText += ch
+                    delay(120L)
                 }
-
-
                 delay(2000L)
-
-
-                repeat(targetText.length) {
+                repeat(target.length) {
                     displayedText = displayedText.dropLast(1)
-                    delay(75L) // Speed of deleting
+                    delay(70L)
                 }
-
-
-                delay(500L)
-
-
-                currentTextIndex = (currentTextIndex + 1) % placeholderTexts.size
+                delay(400L)
+                index = (index + 1) % placeholderTexts.size
             }
         }
     }
-
 
     SearchBar(
         query = query,
         onQueryChange = { newQuery ->
             query = newQuery
-            if (query.isNotBlank()) {
-                viewModel.searchMovies(query)
-            } else {
-                viewModel.searchResults = emptyList()
-            }
+            if (query.isNotBlank()) viewModel.searchMovies(query)
+            else viewModel.searchResults = emptyList()
         },
         onSearch = {
             onSearch(query)
@@ -196,12 +194,7 @@ fun MovieSearchBar(
         modifier = Modifier
             .fillMaxWidth()
             .focusRequester(focusRequester),
-
-
-        placeholder = {
-            Text(displayedText)
-        },
-
+        placeholder = { Text(displayedText) },
         leadingIcon = {
             IconButton(onClick = {
                 if (active) {
@@ -212,26 +205,22 @@ fun MovieSearchBar(
                     active = true
                 }
             }) {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Search"
-                )
+                Icon(Icons.Default.Search, contentDescription = "Search")
             }
         },
         trailingIcon = {
             if (query.isNotEmpty()) {
                 IconButton(onClick = { query = "" }) {
-                    Icon(Icons.Default.Close, contentDescription = "Clear search")
+                    Icon(Icons.Default.Close, contentDescription = "Clear")
                 }
             }
         }
     ) {
-        val searchResults = viewModel.searchResults
-
-        if (searchResults.isNotEmpty()) {
+        val results = viewModel.searchResults
+        if (results.isNotEmpty()) {
             LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                items(searchResults.size) { index ->
-                    val movie = searchResults[index]
+                items(results.size) { index ->
+                    val movie = results[index]
                     ListItem(
                         headlineContent = { Text(movie.title) },
                         leadingContent = {
@@ -265,8 +254,7 @@ fun MovieSearchBar(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "No results found",
-                    modifier = Modifier.padding(16.dp),
+                    "No results found",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
