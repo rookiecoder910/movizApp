@@ -28,9 +28,7 @@ class Repository(context: Context) {
         return movieDao.insertMoviesList(movies)
     }
 
-    suspend fun  insertMovieIntoDB(movie: Movie){
-        return movieDao.insert(movie)
-    }
+
 
     // New function to clear all existing movies from the database
     suspend fun clearAllMovies() {
