@@ -116,5 +116,8 @@ dependencies {
     // The basic Espresso core is often added as well for UI interaction
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     testImplementation("junit:junit:4.13.2")
+    //exoplayer
+    implementation("androidx.media3:media3-exoplayer:1.0.0")
+    implementation("androidx.media3:media3-ui:1.0.0")
 
 }
