@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
@@ -175,6 +176,27 @@ fun MovieDetailScreen(
                 // --- MAIN DETAILS ---
                 Column(modifier = Modifier.padding(16.dp)) {
 
+                    // --- Watch Now Button ---
+                    Button(
+                        onClick = {
+                            navController.navigate("player/movie/${movie.id}")
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFE50914)
+                        )
+                    ) {
+                        Icon(
+                            Icons.Default.PlayArrow,
+                            contentDescription = "Watch",
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Watch Now", fontWeight = FontWeight.Bold)
+                    }
+
+                    Spacer(Modifier.height(16.dp))
                     // --- Action Buttons ---
                     Row(
                         modifier = Modifier.fillMaxWidth(),

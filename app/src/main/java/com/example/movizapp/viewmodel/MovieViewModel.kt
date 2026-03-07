@@ -7,107 +7,103 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.movizapp.Repository.Repository
 import com.example.movizapp.retrofit.Movie
-import com.example.movizapp.retrofit.MovieDetails // NEW IMPORT for Movie Details
-import kotlinx.coroutines.Job // NEW IMPORT for debouncing
-import kotlinx.coroutines.delay // NEW IMPORT for debouncing
+import com.example.movizapp.retrofit.MovieDetails
+import com.example.movizapp.retrofit.SeasonDetails
+import com.example.movizapp.retrofit.TvShow
+import com.example.movizapp.retrofit.TvShowDetails
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-//viewmodel stores and manages UI related data
-//viewmodel uses mutable state of instead of livedata
-//when the value of 'movies' changes, the UI is automatically updated
 class MovieViewModel(private val repository: Repository) : ViewModel() {
 
+    // --- Movie States ---
     var movies by mutableStateOf<List<Movie>>(emptyList())
-        private set //only the viewmodel can change the value of movies
+        private set
 
-    // the online movies
     var moviesFromApi by mutableStateOf<List<Movie>>(emptyList())
         private set
 
-    // the offline movies
     var moviesFromRoomDb by mutableStateOf<List<Movie>>(emptyList())
-        private set //only the viewmodel can change the value of movies
+        private set
 
-    // API constant values
-    private val API_KEY = "80f9720370f5ec06ee02481601e89a13"
-    private val PAGE = 1
+    var searchResults by mutableStateOf<List<Movie>>(emptyList())
 
-    // --- NEW: Debouncing Job for Search ---
-    private var searchJob: Job? = null
+    var isSearching by mutableStateOf(false)
+        private set
 
-    // --- NEW: States for Movie Details Screen ---
     var movieDetails by mutableStateOf<MovieDetails?>(null)
         private set
 
     var isDetailLoading by mutableStateOf(false)
         private set
-    // ---------------------------------------------
 
-    init{
+    // --- TV Series States ---
+    var tvShows by mutableStateOf<List<TvShow>>(emptyList())
+        private set
+
+    var tvSearchResults by mutableStateOf<List<TvShow>>(emptyList())
+
+    var tvShowDetails by mutableStateOf<TvShowDetails?>(null)
+        private set
+
+    var seasonDetails by mutableStateOf<SeasonDetails?>(null)
+        private set
+
+    var isTvDetailLoading by mutableStateOf(false)
+        private set
+
+    var isSeasonLoading by mutableStateOf(false)
+        private set
+
+    // API constant values
+    private val API_KEY = "80f9720370f5ec06ee02481601e89a13"
+    private val PAGE = 1
+
+    // Debouncing Jobs
+    private var searchJob: Job? = null
+    private var tvSearchJob: Job? = null
+
+    init {
+        // Load popular movies
         viewModelScope.launch {
             try {
-                // sync data: fetch from api, clear old db, and insert fresh data
                 repository.refreshMovies(API_KEY, PAGE)
-
-                // fetch the data from ROOM DB (which now holds the fresh API data)
                 moviesFromRoomDb = repository.moviesFromDB()
-
-                // assign the fetched data to the 'movies' variable
                 movies = moviesFromRoomDb
-
-            }
-            catch (e:Exception){
-                // if api fails, fetch the cached data from ROOM DB
+            } catch (e: Exception) {
                 moviesFromRoomDb = repository.moviesFromDB()
-
-                // assign the fetched data to the 'movies' variable
                 movies = moviesFromRoomDb
             }
+        }
 
+        // Load popular TV shows
+        viewModelScope.launch {
+            try {
+                tvShows = repository.getPopularTvShows(API_KEY, PAGE)
+            } catch (e: Exception) {
+                tvShows = emptyList()
+            }
         }
     }
 
-
-    // New state to hold the search results
-    var searchResults by mutableStateOf<List<Movie>>(emptyList())
-
-    // New state to track if a search is active (optional, but useful for UI)
-    var isSearching by mutableStateOf(false)
-        private set
-
-
-    // Updated function to perform the search WITH DEBOUNCING
+    // --- Movie Methods ---
     fun searchMovies(query: String) {
-        // 1. Handle blank query immediately
         if (query.isBlank()) {
             searchResults = emptyList()
             isSearching = false
-            searchJob?.cancel() // Cancel any pending job
+            searchJob?.cancel()
             return
         }
-
-        // 2. Cancel the previous job (CORE DEBOUNCE logic)
         searchJob?.cancel()
-
         isSearching = true
-
-        // 3. Start a new job that waits 500ms before execution
         searchJob = viewModelScope.launch {
-            delay(500L) // Wait for 500 milliseconds before firing the network request
-
+            delay(500L)
             try {
-                // Call the new Repository function (only runs if the delay completes)
-                val results = repository.searchMovies(API_KEY, query)
-
-                // Update the search results state
-                searchResults = results
-
+                searchResults = repository.searchMovies(API_KEY, query)
             } catch (e: Exception) {
-                // Handle error
                 searchResults = emptyList()
-                // Log.e("Search", "Search failed: ${e.message}")
             } finally {
-                // Set isSearching to false only if the job successfully finished (was't cancelled)
                 if (searchJob?.isCancelled == false) {
                     isSearching = false
                 }
@@ -115,23 +111,83 @@ class MovieViewModel(private val repository: Repository) : ViewModel() {
         }
     }
 
-    // --- NEW function to fetch Movie Details ---
     fun fetchMovieDetails(movieId: Int) {
-        // Reset state before loading new details
         movieDetails = null
         isDetailLoading = true
-
         viewModelScope.launch {
             try {
-                // Call the existing function in your Repository
-                val details = repository.getMovieDetails(API_KEY, movieId)
-                movieDetails = details
+                movieDetails = repository.getMovieDetails(API_KEY, movieId)
             } catch (e: Exception) {
-                // Handle API error for detail fetching
-                // Log.e("MovieDetails", "Failed to fetch details for $movieId: ${e.message}")
+                // Handle error
             } finally {
                 isDetailLoading = false
             }
         }
+    }
+
+    // --- TV Series Methods ---
+    fun searchTvShows(query: String) {
+        if (query.isBlank()) {
+            tvSearchResults = emptyList()
+            tvSearchJob?.cancel()
+            return
+        }
+        tvSearchJob?.cancel()
+        tvSearchJob = viewModelScope.launch {
+            delay(500L)
+            try {
+                tvSearchResults = repository.searchTvShows(API_KEY, query)
+            } catch (e: Exception) {
+                tvSearchResults = emptyList()
+            }
+        }
+    }
+
+    fun fetchTvShowDetails(tvId: Int) {
+        tvShowDetails = null
+        seasonDetails = null
+        isTvDetailLoading = true
+        viewModelScope.launch {
+            try {
+                tvShowDetails = repository.getTvShowDetails(API_KEY, tvId)
+                // Auto-load first season if available
+                val details = tvShowDetails
+                if (details != null && details.seasons.isNotEmpty()) {
+                    val firstRealSeason = details.seasons.firstOrNull { it.season_number > 0 }
+                        ?: details.seasons.first()
+                    fetchSeasonDetails(tvId, firstRealSeason.season_number)
+                }
+            } catch (e: Exception) {
+                // Handle error
+            } finally {
+                isTvDetailLoading = false
+            }
+        }
+    }
+
+    fun fetchSeasonDetails(tvId: Int, seasonNumber: Int) {
+        isSeasonLoading = true
+        viewModelScope.launch {
+            try {
+                seasonDetails = repository.getSeasonDetails(API_KEY, tvId, seasonNumber)
+            } catch (e: Exception) {
+                seasonDetails = null
+            } finally {
+                isSeasonLoading = false
+            }
+        }
+    }
+
+    // Combined search for both movies and TV
+    fun searchAll(query: String) {
+        searchMovies(query)
+        searchTvShows(query)
+    }
+
+    // Clear all search results
+    fun clearSearchResults() {
+        searchResults = emptyList()
+        tvSearchResults = emptyList()
+        isSearching = false
     }
 }

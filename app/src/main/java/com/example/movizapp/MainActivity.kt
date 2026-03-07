@@ -80,7 +80,7 @@ class MainActivity : ComponentActivity() {
                             MovieSearchBar(
                                 viewModel = movieViewModel,
                                 onSearch = { query ->
-                                    movieViewModel.searchMovies(query)
+                                    movieViewModel.searchAll(query)
                                 }
                             )
                             Spacer(modifier = Modifier.height(16.dp))
@@ -154,7 +154,7 @@ fun MovieSearchBar(
     val focusRequester = remember { FocusRequester() }
 
     // Typing effect
-    val placeholderTexts = listOf("Search movies...", "Search by title...")
+    val placeholderTexts = listOf("Search movies & TV shows...", "Search by title...")
     var displayedText by remember { mutableStateOf(placeholderTexts[0]) }
 
     LaunchedEffect(active) {
@@ -182,8 +182,8 @@ fun MovieSearchBar(
         query = query,
         onQueryChange = { newQuery ->
             query = newQuery
-            if (query.isNotBlank()) viewModel.searchMovies(query)
-            else viewModel.searchResults = emptyList()
+            if (query.isNotBlank()) viewModel.searchAll(query)
+            else viewModel.clearSearchResults()
         },
         onSearch = {
             onSearch(query)
@@ -200,7 +200,7 @@ fun MovieSearchBar(
                 if (active) {
                     active = false
                     query = ""
-                    viewModel.searchResults = emptyList()
+                    viewModel.clearSearchResults()
                 } else {
                     active = true
                 }
