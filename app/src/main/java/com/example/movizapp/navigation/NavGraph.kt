@@ -10,6 +10,7 @@ import com.example.movizapp.screens.MovieDetailScreen
 import com.example.movizapp.screens.MovieScreen
 import com.example.movizapp.screens.PlayerScreen
 import com.example.movizapp.screens.ProfileScreen
+import com.example.movizapp.screens.SearchScreen
 import com.example.movizapp.screens.TvShowDetailScreen
 import com.example.movizapp.viewmodel.MovieViewModel
 
@@ -21,6 +22,9 @@ fun MovizNavGraph(
     NavHost(navController = navController, startDestination = "home") {
         composable("home") {
             MovieScreen(viewModel = viewModel, navController = navController)
+        }
+        composable("search") {
+            SearchScreen(viewModel = viewModel, navController = navController)
         }
         composable(
             "movieDetail/{movieId}",

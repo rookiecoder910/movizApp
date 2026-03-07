@@ -30,6 +30,11 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import com.example.movizapp.retrofit.MovieDetails
+import com.example.movizapp.ui.theme.DarkBackground
+import com.example.movizapp.ui.theme.DarkCard
+import com.example.movizapp.ui.theme.GoldRating
+import com.example.movizapp.ui.theme.NetflixRed
+import com.example.movizapp.ui.theme.TextGrey
 import com.example.movizapp.viewmodel.MovieViewModel
 import com.google.accompanist.flowlayout.FlowRow
 import java.text.NumberFormat
@@ -42,7 +47,6 @@ fun MovieDetailScreen(
     viewModel: MovieViewModel,
     navController: NavController
 ) {
-    // Fetch on launch
     LaunchedEffect(movieId) {
         viewModel.fetchMovieDetails(movieId)
     }
@@ -53,13 +57,17 @@ fun MovieDetailScreen(
     val scrollState = rememberScrollState()
 
     if (movie == null || isLoading) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(modifier = Modifier.size(50.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(DarkBackground),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = NetflixRed, modifier = Modifier.size(50.dp))
         }
         return
     }
 
-    // --- Sharing ---
     val shareMovie: () -> Unit = {
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
@@ -73,7 +81,7 @@ fun MovieDetailScreen(
 
     var isWatchlisted by remember { mutableStateOf(false) }
 
-    Scaffold(containerColor = MaterialTheme.colorScheme.surface) { padding ->
+    Scaffold(containerColor = DarkBackground) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
@@ -81,43 +89,46 @@ fun MovieDetailScreen(
                     .verticalScroll(scrollState)
                     .fillMaxSize()
             ) {
-
-                // --- HEADER IMAGE ---
+                // --- HEADER IMAGE (use backdrop if available) ---
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(450.dp)
                 ) {
+                    val imageUrl = if (movie.backdrop_path != null) {
+                        "https://image.tmdb.org/t/p/w1280${movie.backdrop_path}"
+                    } else {
+                        "https://image.tmdb.org/t/p/w780${movie.poster_path}"
+                    }
                     AsyncImage(
-                        model = "https://image.tmdb.org/t/p/w780${movie.poster_path}",
+                        model = imageUrl,
                         contentDescription = movie.title,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
 
-                    // Gradient overlay
+                    // Gradient overlay - taller for readability
                     Spacer(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(100.dp)
+                            .height(200.dp)
                             .align(Alignment.BottomStart)
                             .background(
                                 Brush.verticalGradient(
-                                    colors = listOf(Color.Transparent, MaterialTheme.colorScheme.surface)
+                                    colors = listOf(Color.Transparent, DarkBackground)
                                 )
                             )
                     )
 
-                    // Title + rating + date
                     Column(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
-                            .padding(horizontal = 16.dp, vertical = 20.dp)
+                            .padding(horizontal = 20.dp, vertical = 24.dp)
                             .fillMaxWidth()
                     ) {
                         Text(
                             text = movie.title,
-                            style = MaterialTheme.typography.headlineMedium.copy(
+                            style = MaterialTheme.typography.headlineLarge.copy(
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold
                             ),
@@ -128,223 +139,154 @@ fun MovieDetailScreen(
                             Text(
                                 text = it,
                                 style = MaterialTheme.typography.titleSmall.copy(
-                                    color = Color.White.copy(alpha = 0.8f)
+                                    color = Color.White.copy(alpha = 0.7f)
                                 ),
-                                modifier = Modifier.padding(top = 2.dp)
+                                modifier = Modifier.padding(top = 4.dp)
                             )
                         }
 
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(10.dp))
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Default.Star,
                                 contentDescription = "Rating",
-                                tint = Color(0xFFFFC107),
-                                modifier = Modifier.size(20.dp)
+                                tint = GoldRating,
+                                modifier = Modifier.size(18.dp)
                             )
                             Text(
                                 text = String.format("%.1f", movie.vote_average),
                                 style = MaterialTheme.typography.titleMedium.copy(color = Color.White),
                                 modifier = Modifier.padding(start = 4.dp)
                             )
-
                             Spacer(Modifier.width(16.dp))
-                            Icon(
-                                imageVector = Icons.Default.DateRange,
-                                contentDescription = "Release Date",
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp)
-                            )
                             Text(
                                 text = movie.release_date,
-                                style = MaterialTheme.typography.titleSmall.copy(color = Color.White),
-                                modifier = Modifier.padding(start = 4.dp)
+                                style = MaterialTheme.typography.bodyMedium.copy(color = TextGrey)
                             )
-
                             movie.runtime?.takeIf { it > 0 }?.let {
                                 Spacer(Modifier.width(16.dp))
                                 Text(
-                                    text = "${it} min",
-                                    style = MaterialTheme.typography.titleSmall.copy(color = Color.White)
+                                    text = "${it / 60}h ${it % 60}m",
+                                    style = MaterialTheme.typography.bodyMedium.copy(color = TextGrey)
                                 )
                             }
                         }
                     }
                 }
 
-                // --- MAIN DETAILS ---
-                Column(modifier = Modifier.padding(16.dp)) {
+                // --- CONTENT ---
+                Column(modifier = Modifier.padding(horizontal = 20.dp)) {
 
-                    // --- Watch Now Button ---
+                    // --- Watch Now ---
                     Button(
-                        onClick = {
-                            navController.navigate("player/movie/${movie.id}")
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFE50914)
-                        )
+                        onClick = { navController.navigate("player/movie/${movie.id}") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = NetflixRed)
                     ) {
-                        Icon(
-                            Icons.Default.PlayArrow,
-                            contentDescription = "Watch",
-                            modifier = Modifier.size(24.dp)
-                        )
+                        Icon(Icons.Default.PlayArrow, contentDescription = "Watch", modifier = Modifier.size(24.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("Watch Now", fontWeight = FontWeight.Bold)
                     }
 
-                    Spacer(Modifier.height(16.dp))
-                    // --- Action Buttons ---
+                    Spacer(Modifier.height(12.dp))
+
+                    // --- Action Row ---
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
+                        horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        Button(
-                            onClick = { isWatchlisted = !isWatchlisted },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isWatchlisted)
-                                    MaterialTheme.colorScheme.inversePrimary
-                                else
-                                    MaterialTheme.colorScheme.primary
-                            ),
-                            shape = RoundedCornerShape(50)
-                        ) {
-                            Icon(
-                                imageVector = if (isWatchlisted)
-                                    Icons.Filled.Favorite
-                                else
-                                    Icons.Default.FavoriteBorder,
-                                contentDescription = "Toggle Watchlist",
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                text = if (isWatchlisted) "WATCHLISTED" else "ADD TO WATCHLIST",
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-
-                        Spacer(Modifier.width(8.dp))
-
-                        IconButton(
-                            onClick = shareMovie,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(50))
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .size(40.dp)
-                        ) {
-                            Icon(Icons.Default.Share, contentDescription = "Share Movie")
-                        }
+                        ActionButton(
+                            icon = if (isWatchlisted) Icons.Filled.Favorite else Icons.Default.FavoriteBorder,
+                            label = if (isWatchlisted) "Watchlisted" else "Watchlist",
+                            tint = if (isWatchlisted) NetflixRed else TextGrey,
+                            onClick = { isWatchlisted = !isWatchlisted }
+                        )
+                        ActionButton(
+                            icon = Icons.Default.Share,
+                            label = "Share",
+                            tint = TextGrey,
+                            onClick = shareMovie
+                        )
                     }
 
                     Spacer(Modifier.height(24.dp))
 
                     // --- Genres ---
                     if (movie.genres.isNotEmpty()) {
-                        Text("Genres", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(8.dp))
                         FlowRow(mainAxisSpacing = 8.dp, crossAxisSpacing = 8.dp) {
                             movie.genres.forEach { genre ->
-                                AssistChip(
+                                SuggestionChip(
                                     onClick = { },
-                                    label = { Text(genre.name) },
-                                    colors = AssistChipDefaults.assistChipColors(
-                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                        labelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
+                                    label = { Text(genre.name, color = Color.White) },
+                                    shape = RoundedCornerShape(20.dp),
+                                    colors = SuggestionChipDefaults.suggestionChipColors(
+                                        containerColor = DarkCard
+                                    ),
+                                    border = null
                                 )
                             }
                         }
-                        Spacer(Modifier.height(24.dp))
+                        Spacer(Modifier.height(20.dp))
                     }
 
                     // --- Overview ---
-                    Text("Overview", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text("Overview", style = MaterialTheme.typography.titleLarge, color = Color.White)
                     Spacer(Modifier.height(8.dp))
-                    Text(movie.overview, style = MaterialTheme.typography.bodyLarge)
+                    Text(movie.overview, style = MaterialTheme.typography.bodyMedium, color = TextGrey)
                     Spacer(Modifier.height(24.dp))
 
-                    // --- Spoken Languages ---
+                    // --- Languages ---
                     if (movie.spoken_languages.isNotEmpty()) {
-                        Text("Languages", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(8.dp))
-                        FlowRow(mainAxisSpacing = 8.dp, crossAxisSpacing = 8.dp) {
-                            movie.spoken_languages.forEach {
-                                SuggestionChip(onClick = {}, label = { Text(it.name) })
-                            }
-                        }
-                        Spacer(Modifier.height(24.dp))
-                    }
-
-                    // --- Production Companies ---
-                    if (movie.production_companies.isNotEmpty()) {
-                        Text("Production Companies", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(12.dp))
-                        FlowRow(mainAxisSpacing = 12.dp, crossAxisSpacing = 12.dp) {
-                            movie.production_companies.forEach { company ->
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier = Modifier.width(100.dp)
-                                ) {
-                                    company.logo_path?.let { logo ->
-                                        Image(
-                                            painter = rememberAsyncImagePainter("https://image.tmdb.org/t/p/w185$logo"),
-                                            contentDescription = company.name,
-                                            modifier = Modifier
-                                                .size(60.dp)
-                                                .clip(RoundedCornerShape(12.dp)),
-                                            contentScale = ContentScale.Fit
-                                        )
-                                    }
-                                    Spacer(Modifier.height(6.dp))
-                                    Text(
-                                        company.name,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 2
-                                    )
-                                }
-                            }
-                        }
-                        Spacer(Modifier.height(24.dp))
-                    }
-
-                    // --- Production Countries ---
-                    if (movie.production_countries.isNotEmpty()) {
-                        Text("Countries", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        Text("Languages", style = MaterialTheme.typography.titleLarge, color = Color.White)
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            movie.production_countries.joinToString { it.name },
-                            style = MaterialTheme.typography.bodyMedium
+                            movie.spoken_languages.joinToString(" · ") { it.name },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextGrey
                         )
                         Spacer(Modifier.height(24.dp))
                     }
 
-                    // --- Budget & Revenue ---
+                    // --- Production ---
+                    if (movie.production_companies.isNotEmpty()) {
+                        Text("Production", style = MaterialTheme.typography.titleLarge, color = Color.White)
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            movie.production_companies.joinToString(" · ") { it.name },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextGrey
+                        )
+                        Spacer(Modifier.height(24.dp))
+                    }
+
+                    // Budget & Revenue
                     val formatCurrency: (Long?) -> String = { value ->
-                        value?.let {
+                        value?.takeIf { it > 0 }?.let {
                             NumberFormat.getCurrencyInstance(Locale.US).format(it)
                         } ?: "N/A"
                     }
 
-                    if (movie.budget != null || movie.revenue != null) {
-                        Text("Financials", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    if ((movie.budget ?: 0L) > 0 || (movie.revenue ?: 0L) > 0) {
+                        Text("Financials", style = MaterialTheme.typography.titleLarge, color = Color.White)
                         Spacer(Modifier.height(8.dp))
-                        Column {
-                            Text("Budget: ${formatCurrency(movie.budget)}", style = MaterialTheme.typography.bodyMedium)
-                            Text("Revenue: ${formatCurrency(movie.revenue)}", style = MaterialTheme.typography.bodyMedium)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text("Budget", style = MaterialTheme.typography.labelMedium, color = TextGrey)
+                                Text(formatCurrency(movie.budget), color = Color.White)
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("Revenue", style = MaterialTheme.typography.labelMedium, color = TextGrey)
+                                Text(formatCurrency(movie.revenue), color = Color.White)
+                            }
                         }
                         Spacer(Modifier.height(32.dp))
-                    }
-
-                    // --- Status ---
-                    movie.status?.let {
-                        Text("Status", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(8.dp))
-                        Text(it, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
@@ -353,12 +295,40 @@ fun MovieDetailScreen(
             TopAppBar(
                 title = {},
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(
+                        onClick = { navController.popBackStack() },
+                        modifier = Modifier
+                            .padding(4.dp)
+                            .background(
+                                Color.Black.copy(alpha = 0.5f),
+                                shape = RoundedCornerShape(50)
+                            )
+                    ) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         }
+    }
+}
+
+@Composable
+fun ActionButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    tint: Color,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .padding(12.dp)
+    ) {
+        IconButton(onClick = onClick) {
+            Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(28.dp))
+        }
+        Text(label, style = MaterialTheme.typography.labelSmall, color = tint)
     }
 }
