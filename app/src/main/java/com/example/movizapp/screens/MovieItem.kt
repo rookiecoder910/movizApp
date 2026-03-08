@@ -1,3 +1,5 @@
+package com.example.movizapp.screens
+
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -36,12 +38,12 @@ fun MovieItem(
     ) {
         Row(modifier = Modifier.padding(12.dp)) {
             AsyncImage(
-                model = "https://image.tmdb.org/t/p/w500/${movie.poster_path}",
+                model = "https://image.tmdb.org/t/p/w185/${movie.poster_path}",
                 contentDescription = movie.title,
-                contentScale = ContentScale.Crop,
+                contentScale = ContentScale.FillBounds,
                 modifier = Modifier
                     .width(100.dp)
-                    .height(150.dp)
+                    .aspectRatio(2f / 3f)
                     .clip(MaterialTheme.shapes.medium)
             )
 

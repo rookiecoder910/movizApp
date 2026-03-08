@@ -37,13 +37,13 @@ fun TvShowItem(
         Row(modifier = Modifier.padding(12.dp)) {
             AsyncImage(
                 model = if (tvShow.poster_path != null)
-                    "https://image.tmdb.org/t/p/w500/${tvShow.poster_path}"
+                    "https://image.tmdb.org/t/p/w185/${tvShow.poster_path}"
                 else null,
                 contentDescription = tvShow.name,
-                contentScale = ContentScale.Crop,
+                contentScale = ContentScale.FillBounds,
                 modifier = Modifier
                     .width(100.dp)
-                    .height(150.dp)
+                    .aspectRatio(2f / 3f)
                     .clip(MaterialTheme.shapes.medium)
             )
 

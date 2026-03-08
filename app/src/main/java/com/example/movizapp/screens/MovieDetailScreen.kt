@@ -96,9 +96,9 @@ fun MovieDetailScreen(
                         .height(450.dp)
                 ) {
                     val imageUrl = if (movie.backdrop_path != null) {
-                        "https://image.tmdb.org/t/p/w1280${movie.backdrop_path}"
+                        "https://image.tmdb.org/t/p/w780${movie.backdrop_path}"
                     } else {
-                        "https://image.tmdb.org/t/p/w780${movie.poster_path}"
+                        "https://image.tmdb.org/t/p/w500${movie.poster_path}"
                     }
                     AsyncImage(
                         model = imageUrl,

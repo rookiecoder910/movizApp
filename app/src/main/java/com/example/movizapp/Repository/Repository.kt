@@ -1,6 +1,7 @@
 package com.example.movizapp.Repository
 
 import android.content.Context
+import com.example.movizapp.retrofit.ApiService
 import com.example.movizapp.retrofit.Movie
 import com.example.movizapp.retrofit.MovieDetails
 import com.example.movizapp.retrofit.RetrofitInstance
@@ -10,15 +11,18 @@ import com.example.movizapp.retrofit.TvShowDetails
 import com.example.movizapp.room.MovieDAO
 import com.example.movizapp.room.MoviesDb
 
-//repository contains all methods to fetch data from online and offline
+// Repository contains all methods to fetch data from online and offline
 class Repository(context: Context) {
 
-    //fetching data from online API
+    // Use the cached API instance
+    private val api: ApiService = RetrofitInstance.getApi(context)
+
+    // fetching data from online API
     suspend fun getPopularMovies(apiKey: String, page: Int): List<Movie> {
-        return RetrofitInstance.api.getPopularMovies(apiKey, page).results
+        return api.getPopularMovies(apiKey, page).results
     }
 
-    //fetching data from offline database
+    // fetching data from offline database
     private val db = MoviesDb.getInstance(context)
     private val movieDao: MovieDAO = db.movieDao
 
@@ -43,27 +47,27 @@ class Repository(context: Context) {
     }
 
     suspend fun searchMovies(apiKey: String, query: String, page: Int = 1): List<Movie> {
-        return RetrofitInstance.api.searchMovies(apiKey, query, page).results
+        return api.searchMovies(apiKey, query, page).results
     }
 
     suspend fun getMovieDetails(apiKey: String, movieId: Int): MovieDetails {
-        return RetrofitInstance.api.getMovieDetails(movieId, apiKey)
+        return api.getMovieDetails(movieId, apiKey)
     }
 
     // --- TV Series Methods ---
     suspend fun getPopularTvShows(apiKey: String, page: Int): List<TvShow> {
-        return RetrofitInstance.api.getPopularTvShows(apiKey, page).results
+        return api.getPopularTvShows(apiKey, page).results
     }
 
     suspend fun searchTvShows(apiKey: String, query: String, page: Int = 1): List<TvShow> {
-        return RetrofitInstance.api.searchTvShows(apiKey, query, page).results
+        return api.searchTvShows(apiKey, query, page).results
     }
 
     suspend fun getTvShowDetails(apiKey: String, tvId: Int): TvShowDetails {
-        return RetrofitInstance.api.getTvShowDetails(tvId, apiKey)
+        return api.getTvShowDetails(tvId, apiKey)
     }
 
     suspend fun getSeasonDetails(apiKey: String, tvId: Int, seasonNumber: Int): SeasonDetails {
-        return RetrofitInstance.api.getSeasonDetails(tvId, seasonNumber, apiKey)
+        return api.getSeasonDetails(tvId, seasonNumber, apiKey)
     }
 }

@@ -85,9 +85,9 @@ fun TvShowDetailScreen(
                         .height(420.dp)
                 ) {
                     val imageUrl = if (tvShow.backdrop_path != null) {
-                        "https://image.tmdb.org/t/p/w1280${tvShow.backdrop_path}"
+                        "https://image.tmdb.org/t/p/w780${tvShow.backdrop_path}"
                     } else if (tvShow.poster_path != null) {
-                        "https://image.tmdb.org/t/p/w780${tvShow.poster_path}"
+                        "https://image.tmdb.org/t/p/w500${tvShow.poster_path}"
                     } else null
 
                     AsyncImage(

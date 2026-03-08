@@ -137,7 +137,7 @@ fun HeroBanner(movie: Movie, navController: NavController) {
             .clickable { navController.navigate("movieDetail/${movie.id}") }
     ) {
         AsyncImage(
-            model = "https://image.tmdb.org/t/p/w780/${movie.poster_path}",
+            model = "https://image.tmdb.org/t/p/w500/${movie.poster_path}",
             contentDescription = movie.title,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
@@ -219,13 +219,13 @@ fun PosterCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp)
+                .aspectRatio(2f / 3f)
                 .clip(RoundedCornerShape(10.dp))
         ) {
             AsyncImage(
-                model = if (posterPath != null) "https://image.tmdb.org/t/p/w500/$posterPath" else null,
+                model = if (posterPath != null) "https://image.tmdb.org/t/p/w342/$posterPath" else null,
                 contentDescription = title,
-                contentScale = ContentScale.Crop,
+                contentScale = ContentScale.FillBounds,
                 modifier = Modifier.fillMaxSize()
             )
 
