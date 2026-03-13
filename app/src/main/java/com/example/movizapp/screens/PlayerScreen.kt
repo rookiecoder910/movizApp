@@ -13,18 +13,10 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,15 +26,12 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.navigation.NavController
-import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,8 +55,6 @@ fun PlayerScreen(
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     var isLoading by remember { mutableStateOf(true) }
-    var webViewInstance by remember { mutableStateOf<WebView?>(null) }
-    var showControls by remember { mutableStateOf(false) }
 
     // Allowed domains
     val allowedDomains = remember {
@@ -123,35 +110,6 @@ fun PlayerScreen(
         })()
     """.trimIndent()
 
-    // JavaScript to seek video
-    fun seekVideo(seconds: Int) {
-        val js = """
-            javascript:(function() {
-                var videos = document.querySelectorAll('video');
-                if (videos.length > 0) {
-                    videos[0].currentTime += $seconds;
-                } else {
-                    var iframes = document.querySelectorAll('iframe');
-                    for (var i = 0; i < iframes.length; i++) {
-                        try {
-                            var vid = iframes[i].contentDocument.querySelectorAll('video');
-                            if (vid.length > 0) { vid[0].currentTime += $seconds; break; }
-                        } catch(e) {}
-                    }
-                }
-            })()
-        """.trimIndent()
-        webViewInstance?.evaluateJavascript(js, null)
-    }
-
-    // Auto-hide controls after 3 seconds
-    LaunchedEffect(showControls) {
-        if (showControls) {
-            delay(3500L)
-            showControls = false
-        }
-    }
-
     // Immersive mode for landscape
     DisposableEffect(isLandscape) {
         if (activity != null) {
@@ -185,15 +143,11 @@ fun PlayerScreen(
     }
 
     if (isLandscape) {
-        // --- LANDSCAPE: Full immersive player ---
+        // --- LANDSCAPE: Full immersive player (VidKing controls only) ---
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black)
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() }
-                ) { showControls = !showControls }
         ) {
             PlayerWebView(
                 url = url,
@@ -201,59 +155,8 @@ fun PlayerScreen(
                 isBlockedUrl = ::isBlockedUrl,
                 adBlockCss = adBlockCss,
                 onLoadingChanged = { isLoading = it },
-                onWebViewCreated = { webViewInstance = it },
                 modifier = Modifier.fillMaxSize()
             )
-
-            // Skip controls overlay
-            AnimatedVisibility(
-                visible = showControls && !isLoading,
-                enter = fadeIn(),
-                exit = fadeOut(),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.3f))
-                ) {
-                    // Back button (top-left)
-                    IconButton(
-                        onClick = { navController.popBackStack() },
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(16.dp)
-                            .background(Color.Black.copy(alpha = 0.5f), CircleShape)
-                    ) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
-                    }
-
-                    // Center controls: -10s  |  +10s
-                    Row(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalArrangement = Arrangement.spacedBy(60.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // -10 seconds
-                        SkipButton(label = "-10", onClick = { seekVideo(-10) })
-
-                        // +10 seconds
-                        SkipButton(label = "+10", onClick = { seekVideo(10) })
-                    }
-
-                    // Title (bottom-left)
-                    if (mediaType == "tv") {
-                        Text(
-                            text = "S${season} · E${episode}",
-                            color = Color.White.copy(alpha = 0.8f),
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .padding(16.dp)
-                        )
-                    }
-                }
-            }
 
             if (isLoading) {
                 CircularProgressIndicator(
@@ -263,7 +166,7 @@ fun PlayerScreen(
             }
         }
     } else {
-        // --- PORTRAIT: Top bar + skip controls ---
+        // --- PORTRAIT: Top bar + VidKing player controls only ---
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -291,10 +194,6 @@ fun PlayerScreen(
                     .fillMaxSize()
                     .padding(padding)
                     .background(Color.Black)
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() }
-                    ) { showControls = !showControls }
             ) {
                 PlayerWebView(
                     url = url,
@@ -302,32 +201,8 @@ fun PlayerScreen(
                     isBlockedUrl = ::isBlockedUrl,
                     adBlockCss = adBlockCss,
                     onLoadingChanged = { isLoading = it },
-                    onWebViewCreated = { webViewInstance = it },
                     modifier = Modifier.fillMaxSize()
                 )
-
-                // Skip controls overlay in portrait
-                AnimatedVisibility(
-                    visible = showControls && !isLoading,
-                    enter = fadeIn(),
-                    exit = fadeOut(),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.3f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(60.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            SkipButton(label = "-10", onClick = { seekVideo(-10) })
-                            SkipButton(label = "+10", onClick = { seekVideo(10) })
-                        }
-                    }
-                }
 
                 if (isLoading) {
                     CircularProgressIndicator(
@@ -340,37 +215,6 @@ fun PlayerScreen(
     }
 }
 
-@Composable
-fun SkipButton(label: String, onClick: () -> Unit) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .clickable(onClick = onClick)
-            .padding(8.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .background(Color.White.copy(alpha = 0.15f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = label,
-                color = Color.White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-        }
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = "sec",
-            color = Color.White.copy(alpha = 0.7f),
-            fontSize = 11.sp
-        )
-    }
-}
-
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun PlayerWebView(
@@ -379,7 +223,6 @@ fun PlayerWebView(
     isBlockedUrl: (String?) -> Boolean,
     adBlockCss: String,
     onLoadingChanged: (Boolean) -> Unit,
-    onWebViewCreated: (WebView) -> Unit,
     modifier: Modifier = Modifier
 ) {
     AndroidView(
@@ -439,7 +282,6 @@ fun PlayerWebView(
 
                 setBackgroundColor(android.graphics.Color.BLACK)
                 loadUrl(url)
-                onWebViewCreated(this)
             }
         },
         modifier = modifier
