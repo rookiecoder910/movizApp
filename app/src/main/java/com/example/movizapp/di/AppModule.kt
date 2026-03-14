@@ -45,12 +45,17 @@ object AppModule {
 
         val offlineCacheInterceptor = Interceptor { chain ->
             var request = chain.request()
-            val cacheControl = CacheControl.Builder()
-                .maxStale(7, TimeUnit.DAYS)
-                .build()
-            request = request.newBuilder()
-                .cacheControl(cacheControl)
-                .build()
+            val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE)
+                    as? android.net.ConnectivityManager
+            val isOnline = cm?.activeNetwork != null
+            if (!isOnline) {
+                val cacheControl = CacheControl.Builder()
+                    .maxStale(7, TimeUnit.DAYS)
+                    .build()
+                request = request.newBuilder()
+                    .cacheControl(cacheControl)
+                    .build()
+            }
             chain.proceed(request)
         }
 
@@ -58,8 +63,10 @@ object AppModule {
             .cache(cache)
             .addInterceptor(offlineCacheInterceptor)
             .addNetworkInterceptor(cacheInterceptor)
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
             .build()
     }
 
@@ -101,5 +108,17 @@ object AppModule {
     @Singleton
     fun provideWatchHistoryDao(db: MoviesDb): WatchHistoryDao {
         return db.watchHistoryDao
+    }
+
+    @Provides
+    @Singleton
+    fun provideFirebaseAuth(): com.google.firebase.auth.FirebaseAuth {
+        return com.google.firebase.auth.FirebaseAuth.getInstance()
+    }
+
+    @Provides
+    @Singleton
+    fun provideFirebaseFirestore(): com.google.firebase.firestore.FirebaseFirestore {
+        return com.google.firebase.firestore.FirebaseFirestore.getInstance()
     }
 }

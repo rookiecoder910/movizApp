@@ -112,6 +112,22 @@ fun SearchScreen(
                     )
                 }
             }
+        } else if (viewModel.isSearching) {
+            // Loading state — show spinner while API is fetching
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(
+                        color = Color(0xFFE50914),
+                        modifier = Modifier.size(32.dp),
+                        strokeWidth = 3.dp
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text("Searching...", color = TextGrey, fontSize = 13.sp)
+                }
+            }
         } else if (movieResults.isEmpty() && tvResults.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),

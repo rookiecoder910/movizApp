@@ -9,9 +9,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
@@ -28,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.example.movizapp.auth.AuthViewModel
+import com.example.movizapp.sync.FirestoreSyncManager
 import com.example.movizapp.ui.theme.DarkBackground
 import com.example.movizapp.ui.theme.DarkCard
 import com.example.movizapp.ui.theme.DarkSurface
@@ -35,36 +36,24 @@ import com.example.movizapp.ui.theme.GoldRating
 import com.example.movizapp.ui.theme.NetflixRed
 import com.example.movizapp.ui.theme.TextGrey
 import com.example.movizapp.viewmodel.MovieViewModel
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     viewModel: MovieViewModel,
+    authViewModel: AuthViewModel,
+    syncManager: FirestoreSyncManager,
     navController: NavController
 ) {
     val watchlist by viewModel.watchlist.collectAsState()
     val watchlistCount by viewModel.watchlistCount.collectAsState()
     val recentHistory by viewModel.recentHistory.collectAsState()
     val historyCount by viewModel.historyCount.collectAsState()
-
-    var userName by remember { mutableStateOf("Moviz User") }
-    var isEditing by remember { mutableStateOf(false) }
-    var photoIndex by remember { mutableStateOf(0) }
-    val photoUrls = remember {
-        listOf(
-            "https://placehold.co/150x150/E50914/FFFFFF?text=M",
-            "https://placehold.co/150x150/1a1a1a/E50914?text=MZ"
-        )
-    }
-    var showSavedMessage by remember { mutableStateOf(false) }
-
-    LaunchedEffect(showSavedMessage) {
-        if (showSavedMessage) {
-            delay(2000)
-            showSavedMessage = false
-        }
-    }
+    val authState by authViewModel.authState.collectAsState()
+    val isSignedIn = authState != null
+    val scope = rememberCoroutineScope()
+    var isSyncing by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier
@@ -83,86 +72,99 @@ fun ProfileScreen(
                 Spacer(Modifier.height(16.dp))
 
                 // Profile Picture
-                Box(modifier = Modifier.size(100.dp)) {
+                if (isSignedIn && authState?.photoUrl != null) {
                     AsyncImage(
-                        model = photoUrls[photoIndex],
-                        contentDescription = "Profile Photo",
+                        model = authState?.photoUrl.toString(),
+                        contentDescription = "Profile",
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
-                            .fillMaxSize()
+                            .size(90.dp)
                             .clip(CircleShape)
                             .background(DarkCard)
                     )
-                    FloatingActionButton(
-                        onClick = {
-                            photoIndex = (photoIndex + 1) % photoUrls.size
-                            isEditing = true
-                        },
+                } else {
+                    Box(
                         modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .size(32.dp),
-                        containerColor = NetflixRed,
-                        shape = CircleShape
+                            .size(90.dp)
+                            .clip(CircleShape)
+                            .background(DarkCard),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.AccountBox, contentDescription = "Change", tint = Color.White, modifier = Modifier.size(16.dp))
+                        Text(
+                            text = if (isSignedIn) authState?.displayName?.take(1)?.uppercase() ?: "M" else "M",
+                            color = NetflixRed,
+                            fontSize = 36.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(12.dp))
 
-                // Name Input
-                OutlinedTextField(
-                    value = userName,
-                    onValueChange = {
-                        if (it != "Moviz User") isEditing = true
-                        userName = it
-                    },
-                    label = { Text("Display Name", color = TextGrey) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = NetflixRed,
-                        unfocusedBorderColor = DarkCard,
-                        focusedContainerColor = DarkSurface,
-                        unfocusedContainerColor = DarkSurface,
-                        cursorColor = Color.White,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
-                    )
+                // User name
+                Text(
+                    text = if (isSignedIn) authState?.displayName ?: "User" else "Guest",
+                    color = Color.White,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
                 )
 
-                Spacer(Modifier.height(16.dp))
-
-                // Save Button
-                Button(
-                    onClick = { isEditing = false; showSavedMessage = true },
-                    enabled = isEditing,
-                    modifier = Modifier.fillMaxWidth(0.7f).height(44.dp),
-                    shape = RoundedCornerShape(50),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = NetflixRed,
-                        disabledContainerColor = DarkCard
+                if (isSignedIn) {
+                    Text(
+                        text = authState?.email ?: "",
+                        color = TextGrey,
+                        fontSize = 13.sp
                     )
-                ) {
-                    Icon(Icons.Default.Done, contentDescription = "Save", modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Save Profile", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
 
-                if (showSavedMessage) {
-                    Spacer(Modifier.height(12.dp))
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = DarkCard),
-                        shape = RoundedCornerShape(8.dp)
+                Spacer(Modifier.height(16.dp))
+
+                // Auth Actions
+                if (isSignedIn) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        // Sync button
+                        OutlinedButton(
+                            onClick = {
+                                isSyncing = true
+                                scope.launch {
+                                    try { syncManager.syncWatchlist() } catch (_: Exception) {}
+                                    isSyncing = false
+                                }
+                            },
+                            enabled = !isSyncing,
+                            shape = RoundedCornerShape(20.dp)
+                        ) {
+                            if (isSyncing) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    color = NetflixRed,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text("Syncing...", color = Color.White, fontSize = 12.sp)
+                            } else {
+                                Text("☁ Sync Watchlist", color = Color.White, fontSize = 12.sp)
+                            }
+                        }
+
+                        // Sign out
+                        OutlinedButton(
+                            onClick = { authViewModel.signOut() },
+                            shape = RoundedCornerShape(20.dp)
+                        ) {
+                            Icon(Icons.Default.ExitToApp, contentDescription = "Sign Out", tint = TextGrey, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Sign Out", color = TextGrey, fontSize = 12.sp)
+                        }
+                    }
+                } else {
+                    Button(
+                        onClick = { navController.navigate("login") },
+                        modifier = Modifier.fillMaxWidth(0.7f).height(44.dp),
+                        shape = RoundedCornerShape(50),
+                        colors = ButtonDefaults.buttonColors(containerColor = NetflixRed)
                     ) {
-                        Text(
-                            "Profile saved!",
-                            modifier = Modifier.padding(12.dp),
-                            color = Color(0xFF4CAF50),
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 13.sp
-                        )
+                        Text("Sign In", fontWeight = FontWeight.Bold)
                     }
                 }
             }

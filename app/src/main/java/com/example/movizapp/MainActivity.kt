@@ -30,7 +30,11 @@ import com.example.movizapp.ui.theme.MovizAppTheme
 import com.example.movizapp.ui.theme.NetflixRed
 import com.example.movizapp.ui.theme.TextGrey
 import com.example.movizapp.viewmodel.MovieViewModel
+import com.example.movizapp.auth.AuthViewModel
+import com.example.movizapp.sync.FirestoreSyncManager
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
+
 
 data class BottomNavItem(
     val route: String,
@@ -41,7 +45,11 @@ data class BottomNavItem(
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject lateinit var syncManager: FirestoreSyncManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
@@ -49,6 +57,8 @@ class MainActivity : ComponentActivity() {
             MovizAppTheme {
                 val navController = rememberNavController()
                 val movieViewModel: MovieViewModel = hiltViewModel()
+                val authViewModel: AuthViewModel = hiltViewModel()
+
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
 
@@ -92,8 +102,11 @@ class MainActivity : ComponentActivity() {
                     ) {
                         MovizNavGraph(
                             viewModel = movieViewModel,
+                            authViewModel = authViewModel,
+                            syncManager = syncManager,
                             navController = navController
                         )
+
                     }
                 }
             }

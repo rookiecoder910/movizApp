@@ -4,6 +4,7 @@ plugins {
     id("com.google.devtools.ksp") version "2.2.0-2.0.2"
     alias(libs.plugins.kotlin.compose)
     id("com.google.dagger.hilt.android") version "2.56.2"
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -20,6 +21,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "TMDB_API_KEY", "\"80f9720370f5ec06ee02481601e89a13\"")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"938461589176-kot2o7ur0oq7587iu6ju4odupic49vub.apps.googleusercontent.com\"")
     }
 
     buildTypes {
@@ -111,4 +113,15 @@ dependencies {
     implementation("com.google.dagger:hilt-android:2.56.2")
     ksp("com.google.dagger:hilt-compiler:2.56.2")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+
+    // Firebase
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-firestore-ktx")
+
+    // Google Sign-In (Credential Manager)
+    implementation("com.google.android.gms:play-services-auth:21.3.0")
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 }

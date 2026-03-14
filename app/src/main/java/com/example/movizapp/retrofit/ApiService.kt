@@ -53,4 +53,41 @@ interface ApiService {
         @Path("season_number") seasonNumber: Int,
         @Query("api_key") apiKey: String
     ): SeasonDetails
+
+    // --- Extra Sections ---
+    @GET("trending/movie/week")
+    suspend fun getTrendingMovies(
+        @Query("api_key") apiKey: String,
+        @Query("page") page: Int = 1
+    ): MovieResponse
+
+    @GET("movie/top_rated")
+    suspend fun getTopRatedMovies(
+        @Query("api_key") apiKey: String,
+        @Query("page") page: Int = 1
+    ): MovieResponse
+
+    @GET("movie/now_playing")
+    suspend fun getNowPlayingMovies(
+        @Query("api_key") apiKey: String,
+        @Query("page") page: Int = 1
+    ): MovieResponse
+
+    @GET("movie/upcoming")
+    suspend fun getUpcomingMovies(
+        @Query("api_key") apiKey: String,
+        @Query("page") page: Int = 1
+    ): MovieResponse
+
+    @GET("tv/top_rated")
+    suspend fun getTopRatedTvShows(
+        @Query("api_key") apiKey: String,
+        @Query("page") page: Int = 1
+    ): TvShowResponse
+
+    @GET("trending/tv/week")
+    suspend fun getTrendingTvShows(
+        @Query("api_key") apiKey: String,
+        @Query("page") page: Int = 1
+    ): TvShowResponse
 }

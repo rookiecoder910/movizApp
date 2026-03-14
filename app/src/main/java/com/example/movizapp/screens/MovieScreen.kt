@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
@@ -131,7 +133,18 @@ fun MovieScreen(
                 SectionHeader(title = "Popular Movies")
             }
             item {
+                val movieListState = rememberLazyListState()
+                val shouldLoadMoreMovies by remember {
+                    derivedStateOf {
+                        val last = movieListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                        last >= movies.size - 3 && !viewModel.isLoadingMore
+                    }
+                }
+                LaunchedEffect(shouldLoadMoreMovies) {
+                    if (shouldLoadMoreMovies) viewModel.loadMoreMovies()
+                }
                 LazyRow(
+                    state = movieListState,
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -143,6 +156,16 @@ fun MovieScreen(
                             onClick = { navController.navigate("movieDetail/${movie.id}") }
                         )
                     }
+                    if (viewModel.isLoadingMore) {
+                        item {
+                            Box(
+                                modifier = Modifier.width(60.dp).aspectRatio(2f / 3f),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = com.example.movizapp.ui.theme.NetflixRed, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -153,7 +176,18 @@ fun MovieScreen(
                 SectionHeader(title = "Popular TV Series")
             }
             item {
+                val tvListState = rememberLazyListState()
+                val shouldLoadMoreTv by remember {
+                    derivedStateOf {
+                        val last = tvListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                        last >= tvShows.size - 3 && !viewModel.isLoadingMore
+                    }
+                }
+                LaunchedEffect(shouldLoadMoreTv) {
+                    if (shouldLoadMoreTv) viewModel.loadMoreTvShows()
+                }
                 LazyRow(
+                    state = tvListState,
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -165,53 +199,118 @@ fun MovieScreen(
                             onClick = { navController.navigate("tvDetail/${tvShow.id}") }
                         )
                     }
+                    if (viewModel.isLoadingMore) {
+                        item {
+                            Box(
+                                modifier = Modifier.width(60.dp).aspectRatio(2f / 3f),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = com.example.movizapp.ui.theme.NetflixRed, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            }
+                        }
+                    }
                 }
             }
         }
-        // --- Load More ---
-        item {
-            Spacer(Modifier.height(16.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                if (movies.isNotEmpty()) {
-                    OutlinedButton(
-                        onClick = { viewModel.loadMoreMovies() },
-                        enabled = !viewModel.isLoadingMore,
-                        shape = RoundedCornerShape(20.dp)
-                    ) {
-                        Text("More Movies", color = Color.White, fontSize = 12.sp)
-                    }
-                }
-                if (tvShows.isNotEmpty()) {
-                    OutlinedButton(
-                        onClick = { viewModel.loadMoreTvShows() },
-                        enabled = !viewModel.isLoadingMore,
-                        shape = RoundedCornerShape(20.dp)
-                    ) {
-                        Text("More TV Shows", color = Color.White, fontSize = 12.sp)
-                    }
-                }
-            }
-            if (viewModel.isLoadingMore) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
+
+        // --- 🔥 Trending Movies ---
+        if (viewModel.trendingMovies.isNotEmpty()) {
+            item { SectionHeader(title = "🔥 Trending This Week") }
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    CircularProgressIndicator(
-                        color = com.example.movizapp.ui.theme.NetflixRed,
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.dp
-                    )
+                    items(viewModel.trendingMovies) { movie ->
+                        PosterCard(posterPath = movie.poster_path, title = movie.title, rating = movie.vote_average,
+                            onClick = { navController.navigate("movieDetail/${movie.id}") })
+                    }
                 }
             }
-            Spacer(Modifier.height(16.dp))
         }
+
+        // --- ⭐ Top Rated Movies ---
+        if (viewModel.topRatedMovies.isNotEmpty()) {
+            item { SectionHeader(title = "⭐ Top Rated Movies") }
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(viewModel.topRatedMovies) { movie ->
+                        PosterCard(posterPath = movie.poster_path, title = movie.title, rating = movie.vote_average,
+                            onClick = { navController.navigate("movieDetail/${movie.id}") })
+                    }
+                }
+            }
+        }
+
+        // --- 🎬 Now Playing ---
+        if (viewModel.nowPlayingMovies.isNotEmpty()) {
+            item { SectionHeader(title = "🎬 Now Playing") }
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(viewModel.nowPlayingMovies) { movie ->
+                        PosterCard(posterPath = movie.poster_path, title = movie.title, rating = movie.vote_average,
+                            onClick = { navController.navigate("movieDetail/${movie.id}") })
+                    }
+                }
+            }
+        }
+
+        // --- 🔜 Coming Soon ---
+        if (viewModel.upcomingMovies.isNotEmpty()) {
+            item { SectionHeader(title = "🔜 Coming Soon") }
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(viewModel.upcomingMovies) { movie ->
+                        PosterCard(posterPath = movie.poster_path, title = movie.title, rating = movie.vote_average,
+                            onClick = { navController.navigate("movieDetail/${movie.id}") })
+                    }
+                }
+            }
+        }
+
+        // --- ⭐ Top Rated TV ---
+        if (viewModel.topRatedTvShows.isNotEmpty()) {
+            item { SectionHeader(title = "⭐ Top Rated TV Shows") }
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(viewModel.topRatedTvShows) { tvShow ->
+                        PosterCard(posterPath = tvShow.poster_path, title = tvShow.name, rating = tvShow.vote_average,
+                            onClick = { navController.navigate("tvDetail/${tvShow.id}") })
+                    }
+                }
+            }
+        }
+
+        // --- 🔥 Trending TV ---
+        if (viewModel.trendingTvShows.isNotEmpty()) {
+            item { SectionHeader(title = "🔥 Trending TV Shows") }
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(viewModel.trendingTvShows) { tvShow ->
+                        PosterCard(posterPath = tvShow.poster_path, title = tvShow.name, rating = tvShow.vote_average,
+                            onClick = { navController.navigate("tvDetail/${tvShow.id}") })
+                    }
+                }
+            }
+        }
+
+        // Bottom spacer
+        item { Spacer(Modifier.height(16.dp)) }
     }
 }
 

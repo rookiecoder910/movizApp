@@ -70,6 +70,14 @@ class Repository @Inject constructor(
         return api.getSeasonDetails(tvId, seasonNumber, apiKey)
     }
 
+    // --- Extra Sections ---
+    suspend fun getTrendingMovies(apiKey: String): List<Movie> = api.getTrendingMovies(apiKey).results
+    suspend fun getTopRatedMovies(apiKey: String): List<Movie> = api.getTopRatedMovies(apiKey).results
+    suspend fun getNowPlayingMovies(apiKey: String): List<Movie> = api.getNowPlayingMovies(apiKey).results
+    suspend fun getUpcomingMovies(apiKey: String): List<Movie> = api.getUpcomingMovies(apiKey).results
+    suspend fun getTopRatedTvShows(apiKey: String): List<TvShow> = api.getTopRatedTvShows(apiKey).results
+    suspend fun getTrendingTvShows(apiKey: String): List<TvShow> = api.getTrendingTvShows(apiKey).results
+
     // --- Watchlist ---
     suspend fun addToWatchlist(item: WatchlistItem) = watchlistDao.insert(item)
     suspend fun removeFromWatchlist(tmdbId: Int, mediaType: String) = watchlistDao.deleteByTmdbId(tmdbId, mediaType)

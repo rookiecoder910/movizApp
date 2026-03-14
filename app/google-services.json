@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "938461589176",
+    "project_id": "moviz-b17da",
+    "storage_bucket": "moviz-b17da.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:938461589176:android:865aa282923dc54d920e4d",
+        "android_client_info": {
+          "package_name": "com.example.movizapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDNcLG_XcZidhq354bfIQxzxh0sfHIDqAQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

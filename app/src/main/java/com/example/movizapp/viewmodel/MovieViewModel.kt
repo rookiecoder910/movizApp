@@ -65,6 +65,20 @@ class MovieViewModel @Inject constructor(private val repository: Repository) : V
     var isSeasonLoading by mutableStateOf(false)
         private set
 
+    // --- Extra Sections ---
+    var trendingMovies by mutableStateOf<List<Movie>>(emptyList())
+        private set
+    var topRatedMovies by mutableStateOf<List<Movie>>(emptyList())
+        private set
+    var nowPlayingMovies by mutableStateOf<List<Movie>>(emptyList())
+        private set
+    var upcomingMovies by mutableStateOf<List<Movie>>(emptyList())
+        private set
+    var topRatedTvShows by mutableStateOf<List<TvShow>>(emptyList())
+        private set
+    var trendingTvShows by mutableStateOf<List<TvShow>>(emptyList())
+        private set
+
     // --- Watchlist & History (Flow-based) ---
     val watchlist: StateFlow<List<WatchlistItem>> = repository.getAllWatchlist()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -87,7 +101,7 @@ class MovieViewModel @Inject constructor(private val repository: Repository) : V
 
     // Debouncing Jobs
     private var searchJob: Job? = null
-    private var tvSearchJob: Job? = null
+
 
     init {
         // Load popular movies
@@ -109,6 +123,26 @@ class MovieViewModel @Inject constructor(private val repository: Repository) : V
             } catch (e: Exception) {
                 tvShows = emptyList()
             }
+        }
+
+        // Load extra sections
+        viewModelScope.launch {
+            try { trendingMovies = repository.getTrendingMovies(API_KEY) } catch (_: Exception) {}
+        }
+        viewModelScope.launch {
+            try { topRatedMovies = repository.getTopRatedMovies(API_KEY) } catch (_: Exception) {}
+        }
+        viewModelScope.launch {
+            try { nowPlayingMovies = repository.getNowPlayingMovies(API_KEY) } catch (_: Exception) {}
+        }
+        viewModelScope.launch {
+            try { upcomingMovies = repository.getUpcomingMovies(API_KEY) } catch (_: Exception) {}
+        }
+        viewModelScope.launch {
+            try { topRatedTvShows = repository.getTopRatedTvShows(API_KEY) } catch (_: Exception) {}
+        }
+        viewModelScope.launch {
+            try { trendingTvShows = repository.getTrendingTvShows(API_KEY) } catch (_: Exception) {}
         }
     }
 
@@ -147,27 +181,9 @@ class MovieViewModel @Inject constructor(private val repository: Repository) : V
 
     // --- Movie Methods ---
     fun searchMovies(query: String) {
-        if (query.isBlank()) {
-            searchResults = emptyList()
-            isSearching = false
-            searchJob?.cancel()
-            return
-        }
-        searchJob?.cancel()
-        isSearching = true
-        searchJob = viewModelScope.launch {
-            delay(500L)
-            try {
-                searchResults = repository.searchMovies(API_KEY, query)
-            } catch (e: Exception) {
-                searchResults = emptyList()
-            } finally {
-                if (searchJob?.isCancelled == false) {
-                    isSearching = false
-                }
-            }
-        }
+        searchAll(query)
     }
+
 
     fun fetchMovieDetails(movieId: Int) {
         movieDetails = null
@@ -185,21 +201,9 @@ class MovieViewModel @Inject constructor(private val repository: Repository) : V
 
     // --- TV Series Methods ---
     fun searchTvShows(query: String) {
-        if (query.isBlank()) {
-            tvSearchResults = emptyList()
-            tvSearchJob?.cancel()
-            return
-        }
-        tvSearchJob?.cancel()
-        tvSearchJob = viewModelScope.launch {
-            delay(500L)
-            try {
-                tvSearchResults = repository.searchTvShows(API_KEY, query)
-            } catch (e: Exception) {
-                tvSearchResults = emptyList()
-            }
-        }
+        searchAll(query)
     }
+
 
     fun fetchTvShowDetails(tvId: Int) {
         tvShowDetails = null
@@ -237,12 +241,32 @@ class MovieViewModel @Inject constructor(private val repository: Repository) : V
 
     // Combined search for both movies and TV
     fun searchAll(query: String) {
-        searchMovies(query)
-        searchTvShows(query)
+        if (query.isBlank()) {
+            searchResults = emptyList()
+            tvSearchResults = emptyList()
+            isSearching = false
+            searchJob?.cancel()
+            return
+        }
+        searchJob?.cancel()
+        isSearching = true
+        searchJob = viewModelScope.launch {
+            delay(500L) // debounce
+            try {
+                searchResults = repository.searchMovies(API_KEY, query)
+                tvSearchResults = repository.searchTvShows(API_KEY, query)
+            } catch (_: Exception) {
+                searchResults = emptyList()
+                tvSearchResults = emptyList()
+            } finally {
+                isSearching = false
+            }
+        }
     }
 
     // Clear all search results
     fun clearSearchResults() {
+        searchJob?.cancel()
         searchResults = emptyList()
         tvSearchResults = emptyList()
         isSearching = false
