@@ -21,17 +21,16 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModelProvider
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.movizapp.Repository.Repository
 import com.example.movizapp.ui.theme.DarkBackground
 import com.example.movizapp.ui.theme.DarkSurface
 import com.example.movizapp.ui.theme.MovizAppTheme
 import com.example.movizapp.ui.theme.NetflixRed
 import com.example.movizapp.ui.theme.TextGrey
 import com.example.movizapp.viewmodel.MovieViewModel
-import com.example.movizapp.viewmodel.MovieViewModelFactory
+import dagger.hilt.android.AndroidEntryPoint
 
 data class BottomNavItem(
     val route: String,
@@ -40,18 +39,16 @@ data class BottomNavItem(
     val unselectedIcon: ImageVector
 )
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val repository = Repository(applicationContext)
-        val viewModelFactory = MovieViewModelFactory(repository)
-        val movieViewModel = ViewModelProvider(this, viewModelFactory)[MovieViewModel::class.java]
-
         setContent {
             MovizAppTheme {
                 val navController = rememberNavController()
+                val movieViewModel: MovieViewModel = hiltViewModel()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
 
@@ -61,7 +58,6 @@ class MainActivity : ComponentActivity() {
                     BottomNavItem("profile", "Profile", Icons.Filled.Person, Icons.Outlined.Person)
                 )
 
-                // Routes where bottom nav should be visible
                 val showBottomBar = currentRoute in listOf("home", "search", "profile")
 
                 Scaffold(

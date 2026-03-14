@@ -1,5 +1,7 @@
 package com.example.movizapp
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -14,41 +16,79 @@ import com.example.movizapp.screens.SearchScreen
 import com.example.movizapp.screens.TvShowDetailScreen
 import com.example.movizapp.viewmodel.MovieViewModel
 
+private val fadeIn = fadeIn(animationSpec = tween(300))
+private val fadeOut = fadeOut(animationSpec = tween(300))
+private val slideInRight = slideInHorizontally(initialOffsetX = { it / 3 }, animationSpec = tween(300))
+private val slideOutLeft = slideOutHorizontally(targetOffsetX = { -it / 3 }, animationSpec = tween(300))
+private val slideInLeft = slideInHorizontally(initialOffsetX = { -it / 3 }, animationSpec = tween(300))
+private val slideOutRight = slideOutHorizontally(targetOffsetX = { it / 3 }, animationSpec = tween(300))
+
 @Composable
 fun MovizNavGraph(
     viewModel: MovieViewModel,
     navController: NavHostController
 ) {
     NavHost(navController = navController, startDestination = "home") {
-        composable("home") {
+        // --- Bottom Nav Tabs (fade transition) ---
+        composable(
+            "home",
+            enterTransition = { fadeIn },
+            exitTransition = { fadeOut }
+        ) {
             MovieScreen(viewModel = viewModel, navController = navController)
         }
-        composable("search") {
+        composable(
+            "search",
+            enterTransition = { fadeIn },
+            exitTransition = { fadeOut }
+        ) {
             SearchScreen(viewModel = viewModel, navController = navController)
         }
         composable(
+            "profile",
+            enterTransition = { fadeIn },
+            exitTransition = { fadeOut }
+        ) {
+            ProfileScreen(viewModel = viewModel, navController = navController)
+        }
+
+        // --- Detail Screens (slide in from right) ---
+        composable(
             "movieDetail/{movieId}",
-            arguments = listOf(navArgument("movieId") { type = NavType.IntType })
+            arguments = listOf(navArgument("movieId") { type = NavType.IntType }),
+            enterTransition = { slideInRight + fadeIn },
+            exitTransition = { fadeOut },
+            popEnterTransition = { slideInLeft + fadeIn },
+            popExitTransition = { slideOutRight + fadeOut }
         ) { backStackEntry ->
             val movieId = backStackEntry.arguments?.getInt("movieId") ?: 0
             MovieDetailScreen(movieId = movieId, viewModel = viewModel, navController = navController)
         }
         composable(
             "tvDetail/{tvId}",
-            arguments = listOf(navArgument("tvId") { type = NavType.IntType })
+            arguments = listOf(navArgument("tvId") { type = NavType.IntType }),
+            enterTransition = { slideInRight + fadeIn },
+            exitTransition = { fadeOut },
+            popEnterTransition = { slideInLeft + fadeIn },
+            popExitTransition = { slideOutRight + fadeOut }
         ) { backStackEntry ->
             val tvId = backStackEntry.arguments?.getInt("tvId") ?: 0
             TvShowDetailScreen(tvId = tvId, viewModel = viewModel, navController = navController)
         }
+
+        // --- Player Screens (slide up) ---
         composable(
             "player/movie/{tmdbId}",
-            arguments = listOf(navArgument("tmdbId") { type = NavType.IntType })
+            arguments = listOf(navArgument("tmdbId") { type = NavType.IntType }),
+            enterTransition = { slideInVertically(initialOffsetY = { it }) + fadeIn },
+            exitTransition = { slideOutVertically(targetOffsetY = { it }) + fadeOut }
         ) { backStackEntry ->
             val tmdbId = backStackEntry.arguments?.getInt("tmdbId") ?: 0
             PlayerScreen(
                 mediaType = "movie",
                 tmdbId = tmdbId,
-                navController = navController
+                navController = navController,
+                viewModel = viewModel
             )
         }
         composable(
@@ -57,7 +97,9 @@ fun MovizNavGraph(
                 navArgument("tmdbId") { type = NavType.IntType },
                 navArgument("season") { type = NavType.IntType },
                 navArgument("episode") { type = NavType.IntType }
-            )
+            ),
+            enterTransition = { slideInVertically(initialOffsetY = { it }) + fadeIn },
+            exitTransition = { slideOutVertically(targetOffsetY = { it }) + fadeOut }
         ) { backStackEntry ->
             val tmdbId = backStackEntry.arguments?.getInt("tmdbId") ?: 0
             val season = backStackEntry.arguments?.getInt("season") ?: 1
@@ -67,11 +109,9 @@ fun MovizNavGraph(
                 tmdbId = tmdbId,
                 season = season,
                 episode = episode,
-                navController = navController
+                navController = navController,
+                viewModel = viewModel
             )
-        }
-        composable("profile") {
-            ProfileScreen()
         }
     }
 }

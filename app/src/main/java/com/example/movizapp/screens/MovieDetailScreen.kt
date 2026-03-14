@@ -17,6 +17,8 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -79,7 +81,8 @@ fun MovieDetailScreen(
         context.startActivity(Intent.createChooser(shareIntent, "Share Movie"))
     }
 
-    var isWatchlisted by remember { mutableStateOf(false) }
+    val isWatchlisted by viewModel.isInWatchlist(movie.id, "movie").collectAsState()
+
 
     Scaffold(containerColor = DarkBackground) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
@@ -203,8 +206,17 @@ fun MovieDetailScreen(
                             icon = if (isWatchlisted) Icons.Filled.Favorite else Icons.Default.FavoriteBorder,
                             label = if (isWatchlisted) "Watchlisted" else "Watchlist",
                             tint = if (isWatchlisted) NetflixRed else TextGrey,
-                            onClick = { isWatchlisted = !isWatchlisted }
+                            onClick = {
+                                viewModel.toggleWatchlist(
+                                    tmdbId = movie.id,
+                                    title = movie.title,
+                                    posterPath = movie.poster_path,
+                                    mediaType = "movie",
+                                    voteAverage = movie.vote_average
+                                )
+                            }
                         )
+
                         ActionButton(
                             icon = Icons.Default.Share,
                             label = "Share",

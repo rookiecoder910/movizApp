@@ -32,6 +32,8 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.navigation.NavController
+import com.example.movizapp.viewmodel.MovieViewModel
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,7 +42,8 @@ fun PlayerScreen(
     tmdbId: Int,
     season: Int? = null,
     episode: Int? = null,
-    navController: NavController
+    navController: NavController,
+    viewModel: MovieViewModel
 ) {
     val url = if (mediaType == "tv" && season != null && episode != null) {
         "https://www.vidking.net/embed/tv/$tmdbId/$season/$episode"
@@ -55,6 +58,19 @@ fun PlayerScreen(
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     var isLoading by remember { mutableStateOf(true) }
+
+    // Auto-record watch history
+    LaunchedEffect(tmdbId, mediaType) {
+        viewModel.recordWatch(
+            tmdbId = tmdbId,
+            title = if (mediaType == "tv") "TV Show #$tmdbId" else "Movie #$tmdbId",
+            posterPath = null,
+            mediaType = mediaType,
+            season = season,
+            episode = episode
+        )
+    }
+
 
     // Allowed domains
     val allowedDomains = remember {

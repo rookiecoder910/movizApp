@@ -8,10 +8,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
+
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -174,9 +179,44 @@ fun TvShowDetailScreen(
                         Text("Watch Now", fontWeight = FontWeight.Bold)
                     }
 
+                    Spacer(Modifier.height(12.dp))
+
+                    // --- Watchlist Button ---
+                    val isWatchlisted by viewModel.isInWatchlist(tvId, "tv").collectAsState()
+                    OutlinedButton(
+                        onClick = {
+                            viewModel.toggleWatchlist(
+                                tmdbId = tvId,
+                                title = tvShow.name,
+                                posterPath = tvShow.poster_path,
+                                mediaType = "tv",
+                                voteAverage = tvShow.vote_average
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = if (isWatchlisted) NetflixRed else Color.White
+                        )
+                    ) {
+                        Icon(
+                            if (isWatchlisted) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                            contentDescription = "Watchlist",
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            if (isWatchlisted) "In Watchlist" else "Add to Watchlist",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
                     Spacer(Modifier.height(20.dp))
 
                     // Genres
+
                     if (tvShow.genres.isNotEmpty()) {
                         FlowRow(mainAxisSpacing = 8.dp, crossAxisSpacing = 8.dp) {
                             tvShow.genres.forEach { genre ->

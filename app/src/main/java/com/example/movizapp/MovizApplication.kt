@@ -6,18 +6,18 @@ import coil.ImageLoaderFactory
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.request.CachePolicy
+import dagger.hilt.android.HiltAndroidApp
 
+@HiltAndroidApp
 class MovizApplication : Application(), ImageLoaderFactory {
 
     override fun newImageLoader(): ImageLoader {
         return ImageLoader.Builder(this)
-            // Memory cache: ~25% of app's available heap
             .memoryCache {
                 MemoryCache.Builder(this)
                     .maxSizePercent(0.25)
                     .build()
             }
-            // Disk cache: 50 MB for images
             .diskCache {
                 DiskCache.Builder()
                     .directory(cacheDir.resolve("image_cache"))
@@ -27,7 +27,6 @@ class MovizApplication : Application(), ImageLoaderFactory {
             .diskCachePolicy(CachePolicy.ENABLED)
             .memoryCachePolicy(CachePolicy.ENABLED)
             .networkCachePolicy(CachePolicy.ENABLED)
-            // Don't wait for exact size — faster rendering
             .allowHardware(true)
             .crossfade(true)
             .crossfade(200)

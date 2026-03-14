@@ -5,17 +5,26 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.movizapp.BuildConfig
 import com.example.movizapp.Repository.Repository
 import com.example.movizapp.retrofit.Movie
 import com.example.movizapp.retrofit.MovieDetails
 import com.example.movizapp.retrofit.SeasonDetails
 import com.example.movizapp.retrofit.TvShow
 import com.example.movizapp.retrofit.TvShowDetails
+import com.example.movizapp.room.WatchHistoryItem
+import com.example.movizapp.room.WatchlistItem
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class MovieViewModel(private val repository: Repository) : ViewModel() {
+@HiltViewModel
+class MovieViewModel @Inject constructor(private val repository: Repository) : ViewModel() {
 
     // --- Movie States ---
     var movies by mutableStateOf<List<Movie>>(emptyList())
@@ -56,9 +65,25 @@ class MovieViewModel(private val repository: Repository) : ViewModel() {
     var isSeasonLoading by mutableStateOf(false)
         private set
 
+    // --- Watchlist & History (Flow-based) ---
+    val watchlist: StateFlow<List<WatchlistItem>> = repository.getAllWatchlist()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val watchlistCount: StateFlow<Int> = repository.getWatchlistCount()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val recentHistory: StateFlow<List<WatchHistoryItem>> = repository.getRecentHistory()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val historyCount: StateFlow<Int> = repository.getHistoryCount()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
     // API constant values
-    private val API_KEY = "80f9720370f5ec06ee02481601e89a13"
-    private val PAGE = 1
+    private val API_KEY = BuildConfig.TMDB_API_KEY
+    private var currentMoviePage = 1
+    private var currentTvPage = 1
+    var isLoadingMore by mutableStateOf(false)
+        private set
 
     // Debouncing Jobs
     private var searchJob: Job? = null
@@ -68,7 +93,7 @@ class MovieViewModel(private val repository: Repository) : ViewModel() {
         // Load popular movies
         viewModelScope.launch {
             try {
-                repository.refreshMovies(API_KEY, PAGE)
+                repository.refreshMovies(API_KEY, 1)
                 moviesFromRoomDb = repository.moviesFromDB()
                 movies = moviesFromRoomDb
             } catch (e: Exception) {
@@ -80,9 +105,42 @@ class MovieViewModel(private val repository: Repository) : ViewModel() {
         // Load popular TV shows
         viewModelScope.launch {
             try {
-                tvShows = repository.getPopularTvShows(API_KEY, PAGE)
+                tvShows = repository.getPopularTvShows(API_KEY, 1)
             } catch (e: Exception) {
                 tvShows = emptyList()
+            }
+        }
+    }
+
+    // --- Pagination ---
+    fun loadMoreMovies() {
+        if (isLoadingMore) return
+        isLoadingMore = true
+        viewModelScope.launch {
+            try {
+                currentMoviePage++
+                val more = repository.getPopularMovies(API_KEY, currentMoviePage)
+                movies = movies + more
+            } catch (e: Exception) {
+                currentMoviePage--
+            } finally {
+                isLoadingMore = false
+            }
+        }
+    }
+
+    fun loadMoreTvShows() {
+        if (isLoadingMore) return
+        isLoadingMore = true
+        viewModelScope.launch {
+            try {
+                currentTvPage++
+                val more = repository.getPopularTvShows(API_KEY, currentTvPage)
+                tvShows = tvShows + more
+            } catch (e: Exception) {
+                currentTvPage--
+            } finally {
+                isLoadingMore = false
             }
         }
     }
@@ -150,7 +208,6 @@ class MovieViewModel(private val repository: Repository) : ViewModel() {
         viewModelScope.launch {
             try {
                 tvShowDetails = repository.getTvShowDetails(API_KEY, tvId)
-                // Auto-load first season if available
                 val details = tvShowDetails
                 if (details != null && details.seasons.isNotEmpty()) {
                     val firstRealSeason = details.seasons.firstOrNull { it.season_number > 0 }
@@ -189,5 +246,53 @@ class MovieViewModel(private val repository: Repository) : ViewModel() {
         searchResults = emptyList()
         tvSearchResults = emptyList()
         isSearching = false
+    }
+
+    // --- Watchlist Methods ---
+    fun toggleWatchlist(tmdbId: Int, title: String, posterPath: String?, mediaType: String, voteAverage: Double) {
+        viewModelScope.launch {
+            val currentList = watchlist.value
+            val isInList = currentList.any { it.tmdbId == tmdbId && it.mediaType == mediaType }
+            if (isInList) {
+                repository.removeFromWatchlist(tmdbId, mediaType)
+            } else {
+                repository.addToWatchlist(
+                    WatchlistItem(
+                        tmdbId = tmdbId,
+                        title = title,
+                        posterPath = posterPath,
+                        mediaType = mediaType,
+                        voteAverage = voteAverage
+                    )
+                )
+            }
+        }
+    }
+
+    fun isInWatchlist(tmdbId: Int, mediaType: String): StateFlow<Boolean> {
+        return repository.isInWatchlist(tmdbId, mediaType)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    }
+
+    // --- Watch History Methods ---
+    fun recordWatch(tmdbId: Int, title: String, posterPath: String?, mediaType: String, season: Int? = null, episode: Int? = null) {
+        viewModelScope.launch {
+            repository.addToHistory(
+                WatchHistoryItem(
+                    tmdbId = tmdbId,
+                    title = title,
+                    posterPath = posterPath,
+                    mediaType = mediaType,
+                    season = season,
+                    episode = episode
+                )
+            )
+        }
+    }
+
+    fun clearWatchHistory() {
+        viewModelScope.launch {
+            repository.clearHistory()
+        }
     }
 }

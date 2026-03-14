@@ -11,6 +11,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.airbnb.lottie.compose.*
+
 import com.example.movizapp.retrofit.Movie
 import com.example.movizapp.retrofit.TvShow
 import com.example.movizapp.ui.theme.DarkBackground
@@ -38,33 +40,48 @@ fun MovieScreen(
 ) {
     val movies = viewModel.movies
     val tvShows = viewModel.tvShows
+    val recentHistory by viewModel.recentHistory.collectAsState()
 
-    val composition by rememberLottieComposition(
-        LottieCompositionSpec.Asset("Loading2.json")
-    )
-    val progress by animateLottieCompositionAsState(
-        composition,
-        iterations = LottieConstants.IterateForever,
-        isPlaying = true,
-        speed = 0.5f,
-        restartOnPlay = false
-    )
 
     if (movies.isEmpty() && tvShows.isEmpty()) {
-        Box(
+        // Shimmer loading state
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .background(DarkBackground),
-            contentAlignment = Alignment.Center
+            contentPadding = PaddingValues(bottom = 80.dp)
         ) {
-            LottieAnimation(
-                composition = composition,
-                progress = { progress },
-                modifier = Modifier.size(200.dp)
-            )
+            item { ShimmerHeroBanner() }
+            item {
+                Spacer(Modifier.height(24.dp))
+                Box(
+                    modifier = Modifier
+                        .padding(start = 16.dp)
+                        .width(160.dp)
+                        .height(20.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(ShimmerBrush())
+                )
+                Spacer(Modifier.height(12.dp))
+            }
+            item { ShimmerRow() }
+            item {
+                Spacer(Modifier.height(24.dp))
+                Box(
+                    modifier = Modifier
+                        .padding(start = 16.dp)
+                        .width(160.dp)
+                        .height(20.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(ShimmerBrush())
+                )
+                Spacer(Modifier.height(12.dp))
+            }
+            item { ShimmerRow() }
         }
         return
     }
+
 
     LazyColumn(
         modifier = Modifier
@@ -79,7 +96,36 @@ fun MovieScreen(
             }
         }
 
+        // --- Continue Watching Section ---
+        if (recentHistory.isNotEmpty()) {
+            item {
+                SectionHeader(title = "Continue Watching")
+            }
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(recentHistory) { historyItem ->
+                        PosterCard(
+                            posterPath = historyItem.posterPath,
+                            title = historyItem.title,
+                            rating = 0.0,
+                            onClick = {
+                                if (historyItem.mediaType == "movie") {
+                                    navController.navigate("movieDetail/${historyItem.tmdbId}")
+                                } else {
+                                    navController.navigate("tvDetail/${historyItem.tmdbId}")
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
         // --- Popular Movies Section ---
+
         if (movies.isNotEmpty()) {
             item {
                 SectionHeader(title = "Popular Movies")
@@ -122,9 +168,50 @@ fun MovieScreen(
                 }
             }
         }
-
-        // Spacer at bottom
-        item { Spacer(Modifier.height(16.dp)) }
+        // --- Load More ---
+        item {
+            Spacer(Modifier.height(16.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                if (movies.isNotEmpty()) {
+                    OutlinedButton(
+                        onClick = { viewModel.loadMoreMovies() },
+                        enabled = !viewModel.isLoadingMore,
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Text("More Movies", color = Color.White, fontSize = 12.sp)
+                    }
+                }
+                if (tvShows.isNotEmpty()) {
+                    OutlinedButton(
+                        onClick = { viewModel.loadMoreTvShows() },
+                        enabled = !viewModel.isLoadingMore,
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Text("More TV Shows", color = Color.White, fontSize = 12.sp)
+                    }
+                }
+            }
+            if (viewModel.isLoadingMore) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = com.example.movizapp.ui.theme.NetflixRed,
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+        }
     }
 }
 

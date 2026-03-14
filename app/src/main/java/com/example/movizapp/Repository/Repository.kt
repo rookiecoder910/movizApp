@@ -1,30 +1,31 @@
 package com.example.movizapp.Repository
 
-import android.content.Context
 import com.example.movizapp.retrofit.ApiService
 import com.example.movizapp.retrofit.Movie
 import com.example.movizapp.retrofit.MovieDetails
-import com.example.movizapp.retrofit.RetrofitInstance
 import com.example.movizapp.retrofit.SeasonDetails
 import com.example.movizapp.retrofit.TvShow
 import com.example.movizapp.retrofit.TvShowDetails
 import com.example.movizapp.room.MovieDAO
-import com.example.movizapp.room.MoviesDb
+import com.example.movizapp.room.WatchHistoryDao
+import com.example.movizapp.room.WatchHistoryItem
+import com.example.movizapp.room.WatchlistDao
+import com.example.movizapp.room.WatchlistItem
+import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
+import javax.inject.Singleton
 
-// Repository contains all methods to fetch data from online and offline
-class Repository(context: Context) {
-
-    // Use the cached API instance
-    private val api: ApiService = RetrofitInstance.getApi(context)
-
-    // fetching data from online API
+@Singleton
+class Repository @Inject constructor(
+    private val api: ApiService,
+    private val movieDao: MovieDAO,
+    private val watchlistDao: WatchlistDao,
+    private val watchHistoryDao: WatchHistoryDao
+) {
+    // --- Movies API ---
     suspend fun getPopularMovies(apiKey: String, page: Int): List<Movie> {
         return api.getPopularMovies(apiKey, page).results
     }
-
-    // fetching data from offline database
-    private val db = MoviesDb.getInstance(context)
-    private val movieDao: MovieDAO = db.movieDao
 
     suspend fun moviesFromDB(): List<Movie> {
         return movieDao.getAllMovieSInDB()
@@ -34,12 +35,10 @@ class Repository(context: Context) {
         return movieDao.insertMoviesList(movies)
     }
 
-    // New function to clear all existing movies from the database
     suspend fun clearAllMovies() {
         movieDao.deleteAllMovies()
     }
 
-    // Function to fetch fresh data, clear old data, and insert fresh data
     suspend fun refreshMovies(apiKey: String, page: Int) {
         val freshMovies = getPopularMovies(apiKey, page)
         clearAllMovies()
@@ -54,7 +53,7 @@ class Repository(context: Context) {
         return api.getMovieDetails(movieId, apiKey)
     }
 
-    // --- TV Series Methods ---
+    // --- TV Series ---
     suspend fun getPopularTvShows(apiKey: String, page: Int): List<TvShow> {
         return api.getPopularTvShows(apiKey, page).results
     }
@@ -70,4 +69,17 @@ class Repository(context: Context) {
     suspend fun getSeasonDetails(apiKey: String, tvId: Int, seasonNumber: Int): SeasonDetails {
         return api.getSeasonDetails(tvId, seasonNumber, apiKey)
     }
+
+    // --- Watchlist ---
+    suspend fun addToWatchlist(item: WatchlistItem) = watchlistDao.insert(item)
+    suspend fun removeFromWatchlist(tmdbId: Int, mediaType: String) = watchlistDao.deleteByTmdbId(tmdbId, mediaType)
+    fun getAllWatchlist(): Flow<List<WatchlistItem>> = watchlistDao.getAll()
+    fun isInWatchlist(tmdbId: Int, mediaType: String): Flow<Boolean> = watchlistDao.isInWatchlist(tmdbId, mediaType)
+    fun getWatchlistCount(): Flow<Int> = watchlistDao.getCount()
+
+    // --- Watch History ---
+    suspend fun addToHistory(item: WatchHistoryItem) = watchHistoryDao.insert(item)
+    fun getRecentHistory(limit: Int = 20): Flow<List<WatchHistoryItem>> = watchHistoryDao.getRecent(limit)
+    suspend fun clearHistory() = watchHistoryDao.clearAll()
+    fun getHistoryCount(): Flow<Int> = watchHistoryDao.getCount()
 }
