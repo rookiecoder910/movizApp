@@ -13,3 +13,10 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Environment files
+.env
+*.env
+
+# Firebase
+/.google-services.json

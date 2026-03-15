@@ -9,10 +9,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.example.movizapp" />
+                  <option name="mobileSdkAppId" value="1:938461589176:android:865aa282923dc54d920e4d" />
+                  <option name="projectId" value="moviz-b17da" />
+                  <option name="projectNumber" value="938461589176" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />
