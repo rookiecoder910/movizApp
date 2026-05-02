@@ -1,5 +1,8 @@
 package com.example.movizapp.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -10,7 +13,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
@@ -22,6 +27,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -31,10 +37,13 @@ import coil.compose.AsyncImage
 import com.example.movizapp.retrofit.Movie
 import com.example.movizapp.retrofit.TvShow
 import com.example.movizapp.ui.theme.DarkBackground
+import com.example.movizapp.ui.theme.DarkCard
 import com.example.movizapp.ui.theme.GoldRating
+import com.example.movizapp.ui.theme.NetflixRed
 import com.example.movizapp.ui.theme.TextGrey
 import com.example.movizapp.viewmodel.MovieViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MovieScreen(
     viewModel: MovieViewModel,
@@ -43,7 +52,45 @@ fun MovieScreen(
     val movies = viewModel.movies
     val tvShows = viewModel.tvShows
     val recentHistory by viewModel.recentHistory.collectAsState()
+    val isOnline by viewModel.isOnline.collectAsState()
+    val errorMessage = viewModel.errorMessage
 
+    // Show error state with retry when no data loaded
+    if (movies.isEmpty() && tvShows.isEmpty() && errorMessage != null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(DarkBackground),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    Icons.Default.Warning,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = NetflixRed.copy(alpha = 0.6f)
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = errorMessage,
+                    color = TextGrey,
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(24.dp))
+                Button(
+                    onClick = { viewModel.refreshAll() },
+                    colors = ButtonDefaults.buttonColors(containerColor = NetflixRed),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Retry", fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+        return
+    }
 
     if (movies.isEmpty() && tvShows.isEmpty()) {
         // Shimmer loading state
@@ -85,10 +132,40 @@ fun MovieScreen(
     }
 
 
-    LazyColumn(
+    // Pull-to-refresh wrapper
+    PullToRefreshBox(
+        isRefreshing = viewModel.isRefreshing,
+        onRefresh = { viewModel.refreshAll() },
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBackground),
+            .background(DarkBackground)
+    ) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        // --- Offline Banner ---
+        AnimatedVisibility(
+            visible = !isOnline,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(NetflixRed.copy(alpha = 0.9f))
+                    .padding(vertical = 6.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "You're offline — showing cached content",
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize(),
         contentPadding = PaddingValues(bottom = 80.dp)
     ) {
         // --- Hero Banner (First Movie) ---
@@ -108,7 +185,7 @@ fun MovieScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(recentHistory) { historyItem ->
+                    items(recentHistory, key = { it.id }) { historyItem ->
                         PosterCard(
                             posterPath = historyItem.posterPath,
                             title = historyItem.title,
@@ -137,7 +214,7 @@ fun MovieScreen(
                 val shouldLoadMoreMovies by remember {
                     derivedStateOf {
                         val last = movieListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                        last >= movies.size - 3 && !viewModel.isLoadingMore
+                        last >= movies.size - 3 && !viewModel.isLoadingMoreMovies
                     }
                 }
                 LaunchedEffect(shouldLoadMoreMovies) {
@@ -148,7 +225,7 @@ fun MovieScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(movies) { movie ->
+                    items(movies, key = { it.id }) { movie ->
                         PosterCard(
                             posterPath = movie.poster_path,
                             title = movie.title,
@@ -156,7 +233,7 @@ fun MovieScreen(
                             onClick = { navController.navigate("movieDetail/${movie.id}") }
                         )
                     }
-                    if (viewModel.isLoadingMore) {
+                    if (viewModel.isLoadingMoreMovies) {
                         item {
                             Box(
                                 modifier = Modifier.width(60.dp).aspectRatio(2f / 3f),
@@ -180,7 +257,7 @@ fun MovieScreen(
                 val shouldLoadMoreTv by remember {
                     derivedStateOf {
                         val last = tvListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                        last >= tvShows.size - 3 && !viewModel.isLoadingMore
+                        last >= tvShows.size - 3 && !viewModel.isLoadingMoreTvShows
                     }
                 }
                 LaunchedEffect(shouldLoadMoreTv) {
@@ -191,7 +268,7 @@ fun MovieScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(tvShows) { tvShow ->
+                    items(tvShows, key = { it.id }) { tvShow ->
                         PosterCard(
                             posterPath = tvShow.poster_path,
                             title = tvShow.name,
@@ -199,7 +276,7 @@ fun MovieScreen(
                             onClick = { navController.navigate("tvDetail/${tvShow.id}") }
                         )
                     }
-                    if (viewModel.isLoadingMore) {
+                    if (viewModel.isLoadingMoreTvShows) {
                         item {
                             Box(
                                 modifier = Modifier.width(60.dp).aspectRatio(2f / 3f),
@@ -215,13 +292,13 @@ fun MovieScreen(
 
         // --- 🔥 Trending Movies ---
         if (viewModel.trendingMovies.isNotEmpty()) {
-            item { SectionHeader(title = "🔥 Trending This Week") }
+            item { SectionHeader(title = " Trending This Week") }
             item {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(viewModel.trendingMovies) { movie ->
+                    items(viewModel.trendingMovies, key = { it.id }) { movie ->
                         PosterCard(posterPath = movie.poster_path, title = movie.title, rating = movie.vote_average,
                             onClick = { navController.navigate("movieDetail/${movie.id}") })
                     }
@@ -231,13 +308,13 @@ fun MovieScreen(
 
         // --- ⭐ Top Rated Movies ---
         if (viewModel.topRatedMovies.isNotEmpty()) {
-            item { SectionHeader(title = "⭐ Top Rated Movies") }
+            item { SectionHeader(title = " Top Rated Movies") }
             item {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(viewModel.topRatedMovies) { movie ->
+                    items(viewModel.topRatedMovies, key = { it.id }) { movie ->
                         PosterCard(posterPath = movie.poster_path, title = movie.title, rating = movie.vote_average,
                             onClick = { navController.navigate("movieDetail/${movie.id}") })
                     }
@@ -247,13 +324,13 @@ fun MovieScreen(
 
         // --- 🎬 Now Playing ---
         if (viewModel.nowPlayingMovies.isNotEmpty()) {
-            item { SectionHeader(title = "🎬 Now Playing") }
+            item { SectionHeader(title = " Now Playing") }
             item {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(viewModel.nowPlayingMovies) { movie ->
+                    items(viewModel.nowPlayingMovies, key = { it.id }) { movie ->
                         PosterCard(posterPath = movie.poster_path, title = movie.title, rating = movie.vote_average,
                             onClick = { navController.navigate("movieDetail/${movie.id}") })
                     }
@@ -263,13 +340,13 @@ fun MovieScreen(
 
         // --- 🔜 Coming Soon ---
         if (viewModel.upcomingMovies.isNotEmpty()) {
-            item { SectionHeader(title = "🔜 Coming Soon") }
+            item { SectionHeader(title = " Coming Soon") }
             item {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(viewModel.upcomingMovies) { movie ->
+                    items(viewModel.upcomingMovies, key = { it.id }) { movie ->
                         PosterCard(posterPath = movie.poster_path, title = movie.title, rating = movie.vote_average,
                             onClick = { navController.navigate("movieDetail/${movie.id}") })
                     }
@@ -279,13 +356,13 @@ fun MovieScreen(
 
         // --- ⭐ Top Rated TV ---
         if (viewModel.topRatedTvShows.isNotEmpty()) {
-            item { SectionHeader(title = "⭐ Top Rated TV Shows") }
+            item { SectionHeader(title = " Top Rated TV Shows") }
             item {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(viewModel.topRatedTvShows) { tvShow ->
+                    items(viewModel.topRatedTvShows, key = { it.id }) { tvShow ->
                         PosterCard(posterPath = tvShow.poster_path, title = tvShow.name, rating = tvShow.vote_average,
                             onClick = { navController.navigate("tvDetail/${tvShow.id}") })
                     }
@@ -295,13 +372,13 @@ fun MovieScreen(
 
         // --- 🔥 Trending TV ---
         if (viewModel.trendingTvShows.isNotEmpty()) {
-            item { SectionHeader(title = "🔥 Trending TV Shows") }
+            item { SectionHeader(title = " Trending TV Shows") }
             item {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(viewModel.trendingTvShows) { tvShow ->
+                    items(viewModel.trendingTvShows, key = { it.id }) { tvShow ->
                         PosterCard(posterPath = tvShow.poster_path, title = tvShow.name, rating = tvShow.vote_average,
                             onClick = { navController.navigate("tvDetail/${tvShow.id}") })
                     }
@@ -312,6 +389,8 @@ fun MovieScreen(
         // Bottom spacer
         item { Spacer(Modifier.height(16.dp)) }
     }
+    } // end Column
+    } // end PullToRefreshBox
 }
 
 @Composable
@@ -409,7 +488,7 @@ fun PosterCard(
                 .clip(RoundedCornerShape(10.dp))
         ) {
             AsyncImage(
-                model = if (posterPath != null) "https://image.tmdb.org/t/p/w342/$posterPath" else null,
+                model = if (posterPath != null) "https://image.tmdb.org/t/p/w185/$posterPath" else null,
                 contentDescription = title,
                 contentScale = ContentScale.FillBounds,
                 modifier = Modifier.fillMaxSize()
