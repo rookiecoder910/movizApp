@@ -1,7 +1,10 @@
 package com.example.movizapp.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -37,7 +40,7 @@ import com.example.movizapp.ui.theme.GoldRating
 import com.example.movizapp.ui.theme.NetflixRed
 import com.example.movizapp.ui.theme.TextGrey
 import com.example.movizapp.viewmodel.MovieViewModel
-import com.google.accompanist.flowlayout.FlowRow
+import androidx.compose.foundation.layout.FlowRow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,14 +60,7 @@ fun TvShowDetailScreen(
     val scrollState = rememberScrollState()
 
     if (tvShow == null || isLoading) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(DarkBackground),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator(color = NetflixRed, modifier = Modifier.size(50.dp))
-        }
+        ShimmerDetailScreen()
         return
     }
 
@@ -218,7 +214,7 @@ fun TvShowDetailScreen(
                     // Genres
 
                     if (tvShow.genres.isNotEmpty()) {
-                        FlowRow(mainAxisSpacing = 8.dp, crossAxisSpacing = 8.dp) {
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             tvShow.genres.forEach { genre ->
                                 SuggestionChip(
                                     onClick = { },
@@ -292,6 +288,49 @@ fun TvShowDetailScreen(
                                     navController = navController
                                 )
                                 Spacer(Modifier.height(10.dp))
+                            }
+                        }
+                    }
+
+                    // --- More Like This ---
+                    val similarTvShows = viewModel.similarTvShows
+                    if (similarTvShows.isNotEmpty()) {
+                        Spacer(Modifier.height(24.dp))
+                        Text(
+                            text = "More Like This",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = Color.White,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(similarTvShows.take(10), key = { it.id }) { similar ->
+                                Column(
+                                    modifier = Modifier
+                                        .width(120.dp)
+                                        .clickable {
+                                            navController.navigate("tvDetail/${similar.id}")
+                                        }
+                                ) {
+                                    AsyncImage(
+                                        model = "https://image.tmdb.org/t/p/w185/${similar.poster_path}",
+                                        contentDescription = similar.name,
+                                        contentScale = ContentScale.FillBounds,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .aspectRatio(2f / 3f)
+                                            .clip(RoundedCornerShape(8.dp))
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        text = similar.name,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = TextGrey,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                             }
                         }
                     }

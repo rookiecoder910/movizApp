@@ -1,4 +1,4 @@
-package com.example.movizapp.Repository
+package com.example.movizapp.repository
 
 import com.example.movizapp.retrofit.ApiService
 import com.example.movizapp.retrofit.Movie
@@ -77,6 +77,10 @@ class Repository @Inject constructor(
     suspend fun getUpcomingMovies(apiKey: String): List<Movie> = api.getUpcomingMovies(apiKey).results
     suspend fun getTopRatedTvShows(apiKey: String): List<TvShow> = api.getTopRatedTvShows(apiKey).results
     suspend fun getTrendingTvShows(apiKey: String): List<TvShow> = api.getTrendingTvShows(apiKey).results
+
+    // --- Similar Content ---
+    suspend fun getSimilarMovies(apiKey: String, movieId: Int): List<Movie> = api.getSimilarMovies(movieId, apiKey).results
+    suspend fun getSimilarTvShows(apiKey: String, tvId: Int): List<TvShow> = api.getSimilarTvShows(tvId, apiKey).results
 
     // --- Watchlist ---
     suspend fun addToWatchlist(item: WatchlistItem) = watchlistDao.insert(item)

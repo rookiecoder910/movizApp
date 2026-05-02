@@ -7,8 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.movizapp.retrofit.Movie
-import kotlinx.coroutines.InternalCoroutinesApi
-import kotlinx.coroutines.internal.synchronized
+
 
 
 @Database(
@@ -65,9 +64,8 @@ abstract class MoviesDb : RoomDatabase() {
             }
         }
 
-        @OptIn(InternalCoroutinesApi::class)
         fun getInstance(context: Context): MoviesDb {
-            synchronized(lock = this) {
+            synchronized(this) {
                 var instance = INSTANCE
                 if (instance == null) {
                     instance = Room.databaseBuilder(

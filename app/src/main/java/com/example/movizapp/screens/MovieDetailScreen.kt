@@ -3,7 +3,10 @@ package com.example.movizapp.screens
 import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -27,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -38,7 +42,7 @@ import com.example.movizapp.ui.theme.GoldRating
 import com.example.movizapp.ui.theme.NetflixRed
 import com.example.movizapp.ui.theme.TextGrey
 import com.example.movizapp.viewmodel.MovieViewModel
-import com.google.accompanist.flowlayout.FlowRow
+import androidx.compose.foundation.layout.FlowRow
 import java.text.NumberFormat
 import java.util.*
 
@@ -59,14 +63,7 @@ fun MovieDetailScreen(
     val scrollState = rememberScrollState()
 
     if (movie == null || isLoading) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(DarkBackground),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator(color = NetflixRed, modifier = Modifier.size(50.dp))
-        }
+        ShimmerDetailScreen()
         return
     }
 
@@ -229,7 +226,7 @@ fun MovieDetailScreen(
 
                     // --- Genres ---
                     if (movie.genres.isNotEmpty()) {
-                        FlowRow(mainAxisSpacing = 8.dp, crossAxisSpacing = 8.dp) {
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             movie.genres.forEach { genre ->
                                 SuggestionChip(
                                     onClick = { },
@@ -298,6 +295,50 @@ fun MovieDetailScreen(
                                 Text(formatCurrency(movie.revenue), color = Color.White)
                             }
                         }
+
+                        // --- More Like This ---
+                        val similarMovies = viewModel.similarMovies
+                        if (similarMovies.isNotEmpty()) {
+                            Spacer(Modifier.height(24.dp))
+                            Text(
+                                text = "More Like This",
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = Color.White,
+                                modifier = Modifier.padding(bottom = 12.dp)
+                            )
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(similarMovies.take(10), key = { it.id }) { similar ->
+                                    Column(
+                                        modifier = Modifier
+                                            .width(120.dp)
+                                            .clickable {
+                                                navController.navigate("movieDetail/${similar.id}")
+                                            }
+                                    ) {
+                                        AsyncImage(
+                                            model = "https://image.tmdb.org/t/p/w185/${similar.poster_path}",
+                                            contentDescription = similar.title,
+                                            contentScale = ContentScale.FillBounds,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .aspectRatio(2f / 3f)
+                                                .clip(RoundedCornerShape(8.dp))
+                                        )
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(
+                                            text = similar.title,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = TextGrey,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
                         Spacer(Modifier.height(32.dp))
                     }
                 }

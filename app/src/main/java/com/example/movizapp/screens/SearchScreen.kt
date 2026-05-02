@@ -28,8 +28,10 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.movizapp.ui.theme.DarkBackground
+import com.example.movizapp.ui.theme.DarkCard
 import com.example.movizapp.ui.theme.DarkSurface
 import com.example.movizapp.ui.theme.GoldRating
+import com.example.movizapp.ui.theme.NetflixRed
 import com.example.movizapp.ui.theme.TextGrey
 import com.example.movizapp.viewmodel.MovieViewModel
 
@@ -140,47 +142,80 @@ fun SearchScreen(
                 )
             }
         } else {
-            // Results grid
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (movieResults.isNotEmpty()) {
-                    item(span = { GridItemSpan(3) }) {
-                        Text(
-                            "Movies",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Color.White,
-                            modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 4.dp)
-                        )
-                    }
-                    items(movieResults) { movie ->
-                        SearchResultCard(
-                            posterPath = movie.poster_path,
-                            title = movie.title,
-                            rating = movie.vote_average,
-                            onClick = { navController.navigate("movieDetail/${movie.id}") }
+            // Filter chips + Results
+            var selectedFilter by remember { mutableStateOf("All") }
+            val filters = listOf("All", "Movies", "TV Shows")
+
+            Column {
+                // Filter chips row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    filters.forEach { filter ->
+                        FilterChip(
+                            selected = selectedFilter == filter,
+                            onClick = { selectedFilter = filter },
+                            label = { Text(filter, fontSize = 13.sp) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = NetflixRed,
+                                selectedLabelColor = Color.White,
+                                containerColor = DarkCard,
+                                labelColor = TextGrey
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                borderColor = Color.Transparent,
+                                enabled = true,
+                                selected = selectedFilter == filter
+                            )
                         )
                     }
                 }
-                if (tvResults.isNotEmpty()) {
-                    item(span = { GridItemSpan(3) }) {
-                        Text(
-                            "TV Series",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Color.White,
-                            modifier = Modifier.padding(start = 4.dp, top = 16.dp, bottom = 4.dp)
-                        )
+
+                // Results grid
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (movieResults.isNotEmpty() && selectedFilter != "TV Shows") {
+                        item(span = { GridItemSpan(3) }) {
+                            Text(
+                                "Movies",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Color.White,
+                                modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 4.dp)
+                            )
+                        }
+                        items(movieResults, key = { it.id }) { movie ->
+                            SearchResultCard(
+                                posterPath = movie.poster_path,
+                                title = movie.title,
+                                rating = movie.vote_average,
+                                onClick = { navController.navigate("movieDetail/${movie.id}") }
+                            )
+                        }
                     }
-                    items(tvResults) { tvShow ->
-                        SearchResultCard(
-                            posterPath = tvShow.poster_path,
-                            title = tvShow.name,
-                            rating = tvShow.vote_average,
-                            onClick = { navController.navigate("tvDetail/${tvShow.id}") }
-                        )
+                    if (tvResults.isNotEmpty() && selectedFilter != "Movies") {
+                        item(span = { GridItemSpan(3) }) {
+                            Text(
+                                "TV Series",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Color.White,
+                                modifier = Modifier.padding(start = 4.dp, top = 16.dp, bottom = 4.dp)
+                            )
+                        }
+                        items(tvResults, key = { it.id }) { tvShow ->
+                            SearchResultCard(
+                                posterPath = tvShow.poster_path,
+                                title = tvShow.name,
+                                rating = tvShow.vote_average,
+                                onClick = { navController.navigate("tvDetail/${tvShow.id}") }
+                            )
+                        }
                     }
                 }
             }
@@ -207,7 +242,7 @@ fun SearchResultCard(
                 .clip(RoundedCornerShape(8.dp))
         ) {
             AsyncImage(
-                model = if (posterPath != null) "https://image.tmdb.org/t/p/w342/$posterPath" else null,
+                model = if (posterPath != null) "https://image.tmdb.org/t/p/w185/$posterPath" else null,
                 contentDescription = title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()

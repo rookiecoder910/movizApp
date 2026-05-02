@@ -6,7 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.movizapp.BuildConfig
-import com.example.movizapp.Repository.Repository
+import com.example.movizapp.repository.Repository
 import com.example.movizapp.retrofit.Movie
 import com.example.movizapp.retrofit.MovieDetails
 import com.example.movizapp.retrofit.SeasonDetails
@@ -14,6 +14,7 @@ import com.example.movizapp.retrofit.TvShow
 import com.example.movizapp.retrofit.TvShowDetails
 import com.example.movizapp.room.WatchHistoryItem
 import com.example.movizapp.room.WatchlistItem
+import com.example.movizapp.util.ConnectivityObserver
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -24,7 +25,22 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class MovieViewModel @Inject constructor(private val repository: Repository) : ViewModel() {
+class MovieViewModel @Inject constructor(
+    private val repository: Repository,
+    connectivityObserver: ConnectivityObserver
+) : ViewModel() {
+
+    // --- Network State ---
+    val isOnline: StateFlow<Boolean> = connectivityObserver.isOnline
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    // --- Error State ---
+    var errorMessage by mutableStateOf<String?>(null)
+        private set
+
+    // --- Refresh State ---
+    var isRefreshing by mutableStateOf(false)
+        private set
 
     // --- Movie States ---
     var movies by mutableStateOf<List<Movie>>(emptyList())
@@ -79,6 +95,12 @@ class MovieViewModel @Inject constructor(private val repository: Repository) : V
     var trendingTvShows by mutableStateOf<List<TvShow>>(emptyList())
         private set
 
+    // --- Similar Content ---
+    var similarMovies by mutableStateOf<List<Movie>>(emptyList())
+        private set
+    var similarTvShows by mutableStateOf<List<TvShow>>(emptyList())
+        private set
+
     // --- Watchlist & History (Flow-based) ---
     val watchlist: StateFlow<List<WatchlistItem>> = repository.getAllWatchlist()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -96,7 +118,9 @@ class MovieViewModel @Inject constructor(private val repository: Repository) : V
     private val API_KEY = BuildConfig.TMDB_API_KEY
     private var currentMoviePage = 1
     private var currentTvPage = 1
-    var isLoadingMore by mutableStateOf(false)
+    var isLoadingMoreMovies by mutableStateOf(false)
+        private set
+    var isLoadingMoreTvShows by mutableStateOf(false)
         private set
 
     // Debouncing Jobs
@@ -104,15 +128,27 @@ class MovieViewModel @Inject constructor(private val repository: Repository) : V
 
 
     init {
+        loadAllSections()
+    }
+
+    /**
+     * Loads all home screen data sections.
+     * Called on init and on pull-to-refresh.
+     */
+    private fun loadAllSections() {
         // Load popular movies
         viewModelScope.launch {
             try {
                 repository.refreshMovies(API_KEY, 1)
                 moviesFromRoomDb = repository.moviesFromDB()
                 movies = moviesFromRoomDb
+                errorMessage = null
             } catch (e: Exception) {
                 moviesFromRoomDb = repository.moviesFromDB()
                 movies = moviesFromRoomDb
+                if (movies.isEmpty()) {
+                    errorMessage = "Failed to load movies. Check your connection."
+                }
             }
         }
 
@@ -146,10 +182,30 @@ class MovieViewModel @Inject constructor(private val repository: Repository) : V
         }
     }
 
+    /**
+     * Pull-to-refresh: reloads all sections and resets pagination.
+     */
+    fun refreshAll() {
+        isRefreshing = true
+        errorMessage = null
+        currentMoviePage = 1
+        currentTvPage = 1
+        loadAllSections()
+        viewModelScope.launch {
+            // Small delay so the refresh indicator is visible
+            delay(800)
+            isRefreshing = false
+        }
+    }
+
+    fun dismissError() {
+        errorMessage = null
+    }
+
     // --- Pagination ---
     fun loadMoreMovies() {
-        if (isLoadingMore) return
-        isLoadingMore = true
+        if (isLoadingMoreMovies) return
+        isLoadingMoreMovies = true
         viewModelScope.launch {
             try {
                 currentMoviePage++
@@ -158,14 +214,14 @@ class MovieViewModel @Inject constructor(private val repository: Repository) : V
             } catch (e: Exception) {
                 currentMoviePage--
             } finally {
-                isLoadingMore = false
+                isLoadingMoreMovies = false
             }
         }
     }
 
     fun loadMoreTvShows() {
-        if (isLoadingMore) return
-        isLoadingMore = true
+        if (isLoadingMoreTvShows) return
+        isLoadingMoreTvShows = true
         viewModelScope.launch {
             try {
                 currentTvPage++
@@ -174,7 +230,7 @@ class MovieViewModel @Inject constructor(private val repository: Repository) : V
             } catch (e: Exception) {
                 currentTvPage--
             } finally {
-                isLoadingMore = false
+                isLoadingMoreTvShows = false
             }
         }
     }
@@ -187,6 +243,7 @@ class MovieViewModel @Inject constructor(private val repository: Repository) : V
 
     fun fetchMovieDetails(movieId: Int) {
         movieDetails = null
+        similarMovies = emptyList()
         isDetailLoading = true
         viewModelScope.launch {
             try {
@@ -196,6 +253,12 @@ class MovieViewModel @Inject constructor(private val repository: Repository) : V
             } finally {
                 isDetailLoading = false
             }
+        }
+        // Fetch similar movies in parallel
+        viewModelScope.launch {
+            try {
+                similarMovies = repository.getSimilarMovies(API_KEY, movieId)
+            } catch (_: Exception) {}
         }
     }
 
@@ -208,6 +271,7 @@ class MovieViewModel @Inject constructor(private val repository: Repository) : V
     fun fetchTvShowDetails(tvId: Int) {
         tvShowDetails = null
         seasonDetails = null
+        similarTvShows = emptyList()
         isTvDetailLoading = true
         viewModelScope.launch {
             try {
@@ -223,6 +287,12 @@ class MovieViewModel @Inject constructor(private val repository: Repository) : V
             } finally {
                 isTvDetailLoading = false
             }
+        }
+        // Fetch similar TV shows in parallel
+        viewModelScope.launch {
+            try {
+                similarTvShows = repository.getSimilarTvShows(API_KEY, tvId)
+            } catch (_: Exception) {}
         }
     }
 
@@ -293,9 +363,15 @@ class MovieViewModel @Inject constructor(private val repository: Repository) : V
         }
     }
 
+    // Cached watchlist check flows to prevent coroutine leaks on recomposition
+    private val _watchlistFlowCache = mutableMapOf<String, StateFlow<Boolean>>()
+
     fun isInWatchlist(tmdbId: Int, mediaType: String): StateFlow<Boolean> {
-        return repository.isInWatchlist(tmdbId, mediaType)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+        val key = "${mediaType}_${tmdbId}"
+        return _watchlistFlowCache.getOrPut(key) {
+            repository.isInWatchlist(tmdbId, mediaType)
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+        }
     }
 
     // --- Watch History Methods ---

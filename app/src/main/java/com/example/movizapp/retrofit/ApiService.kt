@@ -90,4 +90,19 @@ interface ApiService {
         @Query("api_key") apiKey: String,
         @Query("page") page: Int = 1
     ): TvShowResponse
+
+    // --- Similar Content ---
+    @GET("movie/{movie_id}/similar")
+    suspend fun getSimilarMovies(
+        @Path("movie_id") movieId: Int,
+        @Query("api_key") apiKey: String,
+        @Query("page") page: Int = 1
+    ): MovieResponse
+
+    @GET("tv/{tv_id}/similar")
+    suspend fun getSimilarTvShows(
+        @Path("tv_id") tvId: Int,
+        @Query("api_key") apiKey: String,
+        @Query("page") page: Int = 1
+    ): TvShowResponse
 }

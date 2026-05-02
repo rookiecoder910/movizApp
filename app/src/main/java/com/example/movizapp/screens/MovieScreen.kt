@@ -10,6 +10,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -17,6 +19,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 
@@ -168,10 +171,11 @@ fun MovieScreen(
             .fillMaxSize(),
         contentPadding = PaddingValues(bottom = 80.dp)
     ) {
-        // --- Hero Banner (First Movie) ---
-        if (movies.isNotEmpty()) {
+        // --- Hero Pager (Top 5 Trending) ---
+        val heroMovies = viewModel.trendingMovies.take(5).ifEmpty { movies.take(5) }
+        if (heroMovies.isNotEmpty()) {
             item {
-                HeroBanner(movie = movies[0], navController = navController)
+                HeroPager(movies = heroMovies, navController = navController)
             }
         }
 
@@ -394,65 +398,103 @@ fun MovieScreen(
 }
 
 @Composable
-fun HeroBanner(movie: Movie, navController: NavController) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(420.dp)
-            .clickable { navController.navigate("movieDetail/${movie.id}") }
-    ) {
-        AsyncImage(
-            model = "https://image.tmdb.org/t/p/w500/${movie.poster_path}",
-            contentDescription = movie.title,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
+fun HeroPager(movies: List<Movie>, navController: NavController) {
+    val pagerState = rememberPagerState(pageCount = { movies.size })
 
-        // Bottom gradient
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-                .align(Alignment.BottomCenter)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, DarkBackground)
+    // Auto-scroll every 4 seconds
+    LaunchedEffect(pagerState) {
+        while (true) {
+            kotlinx.coroutines.delay(4000)
+            val nextPage = (pagerState.currentPage + 1) % movies.size
+            pagerState.animateScrollToPage(nextPage)
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxWidth().height(440.dp)) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            val movie = movies[page]
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable { navController.navigate("movieDetail/${movie.id}") }
+            ) {
+                AsyncImage(
+                    model = "https://image.tmdb.org/t/p/w500/${movie.poster_path}",
+                    contentDescription = movie.title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+
+                // Bottom gradient
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .align(Alignment.BottomCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, DarkBackground)
+                            )
+                        )
+                )
+
+                // Title overlay
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(horizontal = 20.dp, vertical = 36.dp)
+                ) {
+                    Text(
+                        text = movie.title,
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = Color.White,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
-                )
-        )
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Star,
+                            contentDescription = null,
+                            tint = GoldRating,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = String.format("%.1f", movie.vote_average),
+                            color = Color.White,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            text = movie.release_date,
+                            color = TextGrey,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+        }
 
-        // Title overlay
-        Column(
+        // Page indicators
+        Row(
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(horizontal = 20.dp, vertical = 24.dp)
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Text(
-                text = movie.title,
-                style = MaterialTheme.typography.headlineLarge,
-                color = Color.White,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.Star,
-                    contentDescription = null,
-                    tint = GoldRating,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text = String.format("%.1f", movie.vote_average),
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    text = movie.release_date,
-                    color = TextGrey,
-                    style = MaterialTheme.typography.bodyMedium
+            repeat(movies.size) { index ->
+                Box(
+                    modifier = Modifier
+                        .size(if (pagerState.currentPage == index) 8.dp else 6.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(
+                            if (pagerState.currentPage == index) NetflixRed
+                            else Color.White.copy(alpha = 0.4f)
+                        )
                 )
             }
         }

@@ -12,6 +12,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -54,6 +56,53 @@ fun ProfileScreen(
     val isSignedIn = authState != null
     val scope = rememberCoroutineScope()
     var isSyncing by remember { mutableStateOf(false) }
+    var showClearHistoryDialog by remember { mutableStateOf(false) }
+    var showSignOutDialog by remember { mutableStateOf(false) }
+
+    // --- Confirmation Dialogs ---
+    if (showClearHistoryDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearHistoryDialog = false },
+            title = { Text("Clear Watch History?", color = Color.White) },
+            text = { Text("This will permanently remove all your watch history. This action cannot be undone.", color = TextGrey) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.clearWatchHistory()
+                    showClearHistoryDialog = false
+                }) {
+                    Text("Clear", color = NetflixRed)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearHistoryDialog = false }) {
+                    Text("Cancel", color = TextGrey)
+                }
+            },
+            containerColor = DarkCard
+        )
+    }
+
+    if (showSignOutDialog) {
+        AlertDialog(
+            onDismissRequest = { showSignOutDialog = false },
+            title = { Text("Sign Out?", color = Color.White) },
+            text = { Text("Your local watchlist will remain on this device, but cloud sync will stop.", color = TextGrey) },
+            confirmButton = {
+                TextButton(onClick = {
+                    authViewModel.signOut()
+                    showSignOutDialog = false
+                }) {
+                    Text("Sign Out", color = NetflixRed)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSignOutDialog = false }) {
+                    Text("Cancel", color = TextGrey)
+                }
+            },
+            containerColor = DarkCard
+        )
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -147,9 +196,8 @@ fun ProfileScreen(
                             }
                         }
 
-                        // Sign out
                         OutlinedButton(
-                            onClick = { authViewModel.signOut() },
+                            onClick = { showSignOutDialog = true },
                             shape = RoundedCornerShape(20.dp)
                         ) {
                             Icon(Icons.Default.ExitToApp, contentDescription = "Sign Out", tint = TextGrey, modifier = Modifier.size(16.dp))
@@ -194,7 +242,7 @@ fun ProfileScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(watchlist) { item ->
+                    items(watchlist, key = { it.id }) { item ->
                         PosterCard(
                             posterPath = item.posterPath,
                             title = item.title,
@@ -206,6 +254,46 @@ fun ProfileScreen(
                                     navController.navigate("tvDetail/${item.tmdbId}")
                                 }
                             }
+                        )
+                    }
+                }
+            }
+        } else {
+            // Empty watchlist state
+            item {
+                SectionHeader(title = "My Watchlist")
+            }
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = DarkCard)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            Icons.Default.FavoriteBorder,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = TextGrey.copy(alpha = 0.5f)
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            "Your watchlist is empty",
+                            color = TextGrey,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Browse movies and shows to add them here",
+                            color = TextGrey.copy(alpha = 0.6f),
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
                 }
@@ -227,7 +315,7 @@ fun ProfileScreen(
                         style = MaterialTheme.typography.headlineSmall,
                         color = Color.White
                     )
-                    TextButton(onClick = { viewModel.clearWatchHistory() }) {
+                    TextButton(onClick = { showClearHistoryDialog = true }) {
                         Icon(Icons.Default.Delete, contentDescription = "Clear", tint = TextGrey, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("Clear", color = TextGrey, fontSize = 12.sp)
@@ -245,6 +333,43 @@ fun ProfileScreen(
                         }
                     }
                 )
+            }
+        } else {
+            // Empty history state
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = DarkCard)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = TextGrey.copy(alpha = 0.5f)
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            "No watch history yet",
+                            color = TextGrey,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Start watching to track your progress",
+                            color = TextGrey.copy(alpha = 0.6f),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
             }
         }
     }

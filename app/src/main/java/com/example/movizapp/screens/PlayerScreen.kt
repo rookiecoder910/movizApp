@@ -9,10 +9,14 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -35,6 +39,7 @@ import androidx.navigation.NavController
 import com.example.movizapp.viewmodel.MovieViewModel
 
 
+@SuppressLint("SetJavaScriptEnabled")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerScreen(
@@ -45,10 +50,12 @@ fun PlayerScreen(
     navController: NavController,
     viewModel: MovieViewModel
 ) {
-    val url = if (mediaType == "tv" && season != null && episode != null) {
-        "https://www.vidking.net/embed/tv/$tmdbId/$season/$episode"
-    } else {
-        "https://www.vidking.net/embed/movie/$tmdbId"
+    val url = remember(mediaType, tmdbId, season, episode) {
+        if (mediaType == "tv" && season != null && episode != null) {
+            "https://www.vidking.net/embed/tv/$tmdbId/$season/$episode"
+        } else {
+            "https://www.vidking.net/embed/movie/$tmdbId"
+        }
     }
 
     val context = LocalContext.current
@@ -57,24 +64,34 @@ fun PlayerScreen(
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    var isLoading by remember { mutableStateOf(true) }
+    val isLoadingState = remember { mutableStateOf(true) }
+    var isLoading by isLoadingState
 
-    // Auto-record watch history
+    // Auto-record watch history with actual metadata from loaded details
     LaunchedEffect(tmdbId, mediaType) {
+        val title = if (mediaType == "movie") {
+            viewModel.movieDetails?.title ?: "Movie #$tmdbId"
+        } else {
+            viewModel.tvShowDetails?.name ?: "TV Show #$tmdbId"
+        }
+        val posterPath = if (mediaType == "movie") {
+            viewModel.movieDetails?.poster_path
+        } else {
+            viewModel.tvShowDetails?.poster_path
+        }
         viewModel.recordWatch(
             tmdbId = tmdbId,
-            title = if (mediaType == "tv") "TV Show #$tmdbId" else "Movie #$tmdbId",
-            posterPath = null,
+            title = title,
+            posterPath = posterPath,
             mediaType = mediaType,
             season = season,
             episode = episode
         )
     }
 
-
     // Allowed domains
     val allowedDomains = remember {
-        listOf(
+        setOf(
             "vidking.net", "www.vidking.net",
             "vidfast.pro", "vidfast.co",
             "embed.su", "vidsrc.me", "vidsrc.to", "vidsrc.xyz",
@@ -86,35 +103,52 @@ fun PlayerScreen(
     }
 
     val blockedDomains = remember {
-        listOf(
+        setOf(
             "vibe-promo.com", "timesofindia.indiatimes.com",
             "betvibe", "bet365", "1xbet",
             "doubleclick.net", "googlesyndication.com", "googleadservices.com",
             "adclick", "popads", "popcash", "propellerads",
             "adsterra", "juicyads", "exoclick", "trafficjunky",
-            "clickadu", "pushground"
+            "clickadu", "pushground",
+            // Additional common ad networks
+            "adnxs.com", "taboola.com", "outbrain.com",
+            "pubmatic.com", "openx.net", "criteo.com",
+            "amazon-adsystem.com", "moatads.com"
         )
     }
 
-    fun isAllowedUrl(checkUrl: String?): Boolean {
-        if (checkUrl == null) return false
-        val host = try { Uri.parse(checkUrl).host?.lowercase() ?: "" } catch (e: Exception) { "" }
-        return allowedDomains.any { host.contains(it) }
+    // Pre-compute for fast lookup
+    val isAllowedUrl = remember(allowedDomains) {
+        { checkUrl: String? ->
+            if (checkUrl == null) false
+            else {
+                val host = try { Uri.parse(checkUrl).host?.lowercase() ?: "" } catch (_: Exception) { "" }
+                allowedDomains.any { host.contains(it) }
+            }
+        }
     }
 
-    fun isBlockedUrl(checkUrl: String?): Boolean {
-        if (checkUrl == null) return false
-        val lower = checkUrl.lowercase()
-        return blockedDomains.any { lower.contains(it) }
+    val isBlockedUrl = remember(blockedDomains) {
+        { checkUrl: String? ->
+            if (checkUrl == null) false
+            else {
+                val lower = checkUrl.lowercase()
+                blockedDomains.any { lower.contains(it) }
+            }
+        }
     }
 
-    val adBlockCss = """
+    // CSS + JS injection to block ads and improve performance
+    val adBlockScript = remember {
+        """
         javascript:(function() {
+            // CSS: hide ad elements
             var style = document.createElement('style');
             style.innerHTML = `
                 [id*='ad'], [class*='ad-'], [class*='popup'],
                 [class*='overlay'], [id*='overlay'],
                 [class*='modal'], [id*='modal'],
+                [class*='banner'], [id*='banner'],
                 iframe[src*='ad'], iframe[src*='pop'],
                 div[onclick], a[target='_blank'][rel*='nofollow'] {
                     display: none !important;
@@ -123,8 +157,125 @@ fun PlayerScreen(
                 }
             `;
             document.head.appendChild(style);
+
+            // Remove ad iframes dynamically
+            var observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.tagName === 'IFRAME' && node.src && 
+                            (node.src.includes('ad') || node.src.includes('pop') || node.src.includes('banner'))) {
+                            node.remove();
+                        }
+                        if (node.tagName === 'DIV' && node.onclick) {
+                            node.onclick = null;
+                        }
+                    });
+                });
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
         })()
-    """.trimIndent()
+        """.trimIndent()
+    }
+
+    // ==============================
+    // KEY FIX: Single retained WebView instance
+    // Using remember{} so the SAME WebView persists across recompositions
+    // (orientation changes). This prevents URL reload on rotation.
+    // ==============================
+    val webView = remember {
+        WebView(context).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+
+            webViewClient = object : WebViewClient() {
+                override fun shouldOverrideUrlLoading(
+                    view: WebView?,
+                    request: WebResourceRequest?
+                ): Boolean {
+                    val requestUrl = request?.url?.toString() ?: return true
+                    if (isBlockedUrl(requestUrl)) return true
+                    if (isAllowedUrl(requestUrl)) return false
+                    return true // Block unknown domains
+                }
+
+                // Block ad network requests at the resource level (faster than CSS hiding)
+                override fun shouldInterceptRequest(
+                    view: WebView?,
+                    request: WebResourceRequest?
+                ): WebResourceResponse? {
+                    val reqUrl = request?.url?.toString() ?: return null
+                    if (isBlockedUrl(reqUrl)) {
+                        // Return empty response for blocked URLs — no network request made
+                        return WebResourceResponse(
+                            "text/plain", "utf-8",
+                            java.io.ByteArrayInputStream(ByteArray(0))
+                        )
+                    }
+                    return null
+                }
+
+                override fun onPageStarted(view: WebView?, pageUrl: String?, favicon: Bitmap?) {
+                    super.onPageStarted(view, pageUrl, favicon)
+                    isLoadingState.value = true
+                }
+
+                override fun onPageFinished(view: WebView?, pageUrl: String?) {
+                    super.onPageFinished(view, pageUrl)
+                    isLoadingState.value = false
+                    view?.evaluateJavascript(adBlockScript, null)
+                }
+            }
+
+            webChromeClient = object : WebChromeClient() {
+                override fun onCreateWindow(
+                    view: WebView?,
+                    isDialog: Boolean,
+                    isUserGesture: Boolean,
+                    resultMsg: android.os.Message?
+                ): Boolean = false
+            }
+
+            // --- Performance-optimized WebSettings ---
+            settings.apply {
+                javaScriptEnabled = true
+                domStorageEnabled = true
+                databaseEnabled = true
+                mediaPlaybackRequiresUserGesture = false
+                loadWithOverviewMode = true
+                useWideViewPort = true
+                mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                setSupportMultipleWindows(false)
+                javaScriptCanOpenWindowsAutomatically = false
+                setSupportZoom(false)
+                allowFileAccess = false
+
+                // --- Caching for faster loads ---
+                cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
+
+                // --- Rendering optimizations ---
+                setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
+            }
+
+            // Hardware-accelerated rendering
+            setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
+            setBackgroundColor(android.graphics.Color.BLACK)
+
+            // Load the URL once
+            loadUrl(url)
+        }
+    }
+
+
+
+    // Cleanup WebView on dispose to prevent memory leaks
+    DisposableEffect(Unit) {
+        onDispose {
+            webView.stopLoading()
+            webView.destroy()
+        }
+    }
 
     // Immersive mode for landscape
     DisposableEffect(isLandscape) {
@@ -154,35 +305,42 @@ fun PlayerScreen(
         }
     }
 
+    // Back handler — try WebView back first, then nav back
     BackHandler {
-        navController.popBackStack()
+        if (webView.canGoBack()) {
+            webView.goBack()
+        } else {
+            navController.popBackStack()
+        }
     }
 
+    // ==============================
+    // UI: Single WebView used in both orientations
+    // The SAME webView instance is re-parented, NOT recreated
+    // ==============================
     if (isLandscape) {
-        // --- LANDSCAPE: Full immersive player (VidKing controls only) ---
+        // --- LANDSCAPE: Full immersive player ---
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black)
         ) {
-            PlayerWebView(
-                url = url,
-                isAllowedUrl = ::isAllowedUrl,
-                isBlockedUrl = ::isBlockedUrl,
-                adBlockCss = adBlockCss,
-                onLoadingChanged = { isLoading = it },
+            AndroidView(
+                factory = { webView },
                 modifier = Modifier.fillMaxSize()
             )
 
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center),
-                    color = Color(0xFFE50914)
-                )
+            AnimatedVisibility(
+                visible = isLoading,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier.align(Alignment.Center)
+            ) {
+                CircularProgressIndicator(color = Color(0xFFE50914))
             }
         }
     } else {
-        // --- PORTRAIT: Top bar + VidKing player controls only ---
+        // --- PORTRAIT: Top bar + player ---
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -211,95 +369,20 @@ fun PlayerScreen(
                     .padding(padding)
                     .background(Color.Black)
             ) {
-                PlayerWebView(
-                    url = url,
-                    isAllowedUrl = ::isAllowedUrl,
-                    isBlockedUrl = ::isBlockedUrl,
-                    adBlockCss = adBlockCss,
-                    onLoadingChanged = { isLoading = it },
+                AndroidView(
+                    factory = { webView },
                     modifier = Modifier.fillMaxSize()
                 )
 
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center),
-                        color = Color(0xFFE50914)
-                    )
+                AnimatedVisibility(
+                    visible = isLoading,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                    modifier = Modifier.align(Alignment.Center)
+                ) {
+                    CircularProgressIndicator(color = Color(0xFFE50914))
                 }
             }
         }
     }
-}
-
-@SuppressLint("SetJavaScriptEnabled")
-@Composable
-fun PlayerWebView(
-    url: String,
-    isAllowedUrl: (String?) -> Boolean,
-    isBlockedUrl: (String?) -> Boolean,
-    adBlockCss: String,
-    onLoadingChanged: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    AndroidView(
-        factory = { context ->
-            WebView(context).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
-
-                webViewClient = object : WebViewClient() {
-                    override fun shouldOverrideUrlLoading(
-                        view: WebView?,
-                        request: WebResourceRequest?
-                    ): Boolean {
-                        val requestUrl = request?.url?.toString() ?: return true
-                        if (isBlockedUrl(requestUrl)) return true
-                        if (isAllowedUrl(requestUrl)) return false
-                        return true
-                    }
-
-                    override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                        super.onPageStarted(view, url, favicon)
-                        onLoadingChanged(true)
-                    }
-
-                    override fun onPageFinished(view: WebView?, url: String?) {
-                        super.onPageFinished(view, url)
-                        onLoadingChanged(false)
-                        view?.evaluateJavascript(adBlockCss, null)
-                    }
-                }
-
-                webChromeClient = object : WebChromeClient() {
-                    override fun onCreateWindow(
-                        view: WebView?,
-                        isDialog: Boolean,
-                        isUserGesture: Boolean,
-                        resultMsg: android.os.Message?
-                    ): Boolean = false
-                }
-
-                settings.javaScriptEnabled = true
-                settings.domStorageEnabled = true
-                settings.mediaPlaybackRequiresUserGesture = false
-                settings.loadWithOverviewMode = true
-                settings.useWideViewPort = true
-                settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                settings.setSupportMultipleWindows(false)
-                settings.javaScriptCanOpenWindowsAutomatically = false
-                settings.setSupportZoom(false)
-                settings.allowFileAccess = false
-                
-                // WebView cache optimization for mobile data
-                settings.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
-                settings.databaseEnabled = true
-
-                setBackgroundColor(android.graphics.Color.BLACK)
-                loadUrl(url)
-            }
-        },
-        modifier = modifier
-    )
 }
