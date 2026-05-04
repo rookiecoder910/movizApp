@@ -1,5 +1,8 @@
 package com.example.movizapp.retrofit
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class TvShowDetails(
     val id: Int,
     val name: String,
@@ -19,6 +22,7 @@ data class TvShowDetails(
     val production_companies: List<ProductionCompany>
 )
 
+@Immutable
 data class Season(
     val id: Int,
     val season_number: Int,

@@ -16,12 +16,16 @@ import com.example.movizapp.room.WatchHistoryItem
 import com.example.movizapp.room.WatchlistItem
 import com.example.movizapp.util.ConnectivityObserver
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -137,48 +141,67 @@ class MovieViewModel @Inject constructor(
      */
     private fun loadAllSections() {
         // Load popular movies
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
                 repository.refreshMovies(API_KEY, 1)
-                moviesFromRoomDb = repository.moviesFromDB()
-                movies = moviesFromRoomDb
-                errorMessage = null
+                val dbMovies = repository.moviesFromDB()
+                withContext(Dispatchers.Main) {
+                    moviesFromRoomDb = dbMovies
+                    movies = dbMovies
+                    errorMessage = null
+                }
             } catch (e: Exception) {
-                moviesFromRoomDb = repository.moviesFromDB()
-                movies = moviesFromRoomDb
-                if (movies.isEmpty()) {
-                    errorMessage = "Failed to load movies. Check your connection."
+                val dbMovies = repository.moviesFromDB()
+                withContext(Dispatchers.Main) {
+                    moviesFromRoomDb = dbMovies
+                    movies = dbMovies
+                    if (movies.isEmpty()) {
+                        errorMessage = "Failed to load movies. Check your connection."
+                    }
                 }
             }
         }
 
         // Load popular TV shows
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
-                tvShows = repository.getPopularTvShows(API_KEY, 1)
+                val shows = repository.getPopularTvShows(API_KEY, 1)
+                withContext(Dispatchers.Main) {
+                    tvShows = shows
+                }
             } catch (e: Exception) {
-                tvShows = emptyList()
+                withContext(Dispatchers.Main) {
+                    tvShows = emptyList()
+                }
             }
         }
 
-        // Load extra sections
-        viewModelScope.launch {
-            try { trendingMovies = repository.getTrendingMovies(API_KEY) } catch (_: Exception) {}
-        }
-        viewModelScope.launch {
-            try { topRatedMovies = repository.getTopRatedMovies(API_KEY) } catch (_: Exception) {}
-        }
-        viewModelScope.launch {
-            try { nowPlayingMovies = repository.getNowPlayingMovies(API_KEY) } catch (_: Exception) {}
-        }
-        viewModelScope.launch {
-            try { upcomingMovies = repository.getUpcomingMovies(API_KEY) } catch (_: Exception) {}
-        }
-        viewModelScope.launch {
-            try { topRatedTvShows = repository.getTopRatedTvShows(API_KEY) } catch (_: Exception) {}
-        }
-        viewModelScope.launch {
-            try { trendingTvShows = repository.getTrendingTvShows(API_KEY) } catch (_: Exception) {}
+        // Load all extra sections in parallel within a single coroutine
+        viewModelScope.launch(Dispatchers.IO) {
+            coroutineScope {
+                val trending = async { runCatching { repository.getTrendingMovies(API_KEY) }.getOrDefault(emptyList()) }
+                val topRated = async { runCatching { repository.getTopRatedMovies(API_KEY) }.getOrDefault(emptyList()) }
+                val nowPlaying = async { runCatching { repository.getNowPlayingMovies(API_KEY) }.getOrDefault(emptyList()) }
+                val upcoming = async { runCatching { repository.getUpcomingMovies(API_KEY) }.getOrDefault(emptyList()) }
+                val topRatedTv = async { runCatching { repository.getTopRatedTvShows(API_KEY) }.getOrDefault(emptyList()) }
+                val trendingTv = async { runCatching { repository.getTrendingTvShows(API_KEY) }.getOrDefault(emptyList()) }
+
+                val trendingResult = trending.await()
+                val topRatedResult = topRated.await()
+                val nowPlayingResult = nowPlaying.await()
+                val upcomingResult = upcoming.await()
+                val topRatedTvResult = topRatedTv.await()
+                val trendingTvResult = trendingTv.await()
+
+                withContext(Dispatchers.Main) {
+                    trendingMovies = trendingResult
+                    topRatedMovies = topRatedResult
+                    nowPlayingMovies = nowPlayingResult
+                    upcomingMovies = upcomingResult
+                    topRatedTvShows = topRatedTvResult
+                    trendingTvShows = trendingTvResult
+                }
+            }
         }
     }
 
@@ -206,15 +229,23 @@ class MovieViewModel @Inject constructor(
     fun loadMoreMovies() {
         if (isLoadingMoreMovies) return
         isLoadingMoreMovies = true
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
                 currentMoviePage++
                 val more = repository.getPopularMovies(API_KEY, currentMoviePage)
-                movies = movies + more
+                val combined = buildList {
+                    addAll(movies)
+                    addAll(more)
+                }
+                withContext(Dispatchers.Main) {
+                    movies = combined
+                }
             } catch (e: Exception) {
                 currentMoviePage--
             } finally {
-                isLoadingMoreMovies = false
+                withContext(Dispatchers.Main) {
+                    isLoadingMoreMovies = false
+                }
             }
         }
     }
@@ -222,15 +253,23 @@ class MovieViewModel @Inject constructor(
     fun loadMoreTvShows() {
         if (isLoadingMoreTvShows) return
         isLoadingMoreTvShows = true
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
                 currentTvPage++
                 val more = repository.getPopularTvShows(API_KEY, currentTvPage)
-                tvShows = tvShows + more
+                val combined = buildList {
+                    addAll(tvShows)
+                    addAll(more)
+                }
+                withContext(Dispatchers.Main) {
+                    tvShows = combined
+                }
             } catch (e: Exception) {
                 currentTvPage--
             } finally {
-                isLoadingMoreTvShows = false
+                withContext(Dispatchers.Main) {
+                    isLoadingMoreTvShows = false
+                }
             }
         }
     }
@@ -245,19 +284,27 @@ class MovieViewModel @Inject constructor(
         movieDetails = null
         similarMovies = emptyList()
         isDetailLoading = true
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
-                movieDetails = repository.getMovieDetails(API_KEY, movieId)
+                val details = repository.getMovieDetails(API_KEY, movieId)
+                withContext(Dispatchers.Main) {
+                    movieDetails = details
+                }
             } catch (e: Exception) {
                 // Handle error
             } finally {
-                isDetailLoading = false
+                withContext(Dispatchers.Main) {
+                    isDetailLoading = false
+                }
             }
         }
         // Fetch similar movies in parallel
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
-                similarMovies = repository.getSimilarMovies(API_KEY, movieId)
+                val similar = repository.getSimilarMovies(API_KEY, movieId)
+                withContext(Dispatchers.Main) {
+                    similarMovies = similar
+                }
             } catch (_: Exception) {}
         }
     }
@@ -273,38 +320,55 @@ class MovieViewModel @Inject constructor(
         seasonDetails = null
         similarTvShows = emptyList()
         isTvDetailLoading = true
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
-                tvShowDetails = repository.getTvShowDetails(API_KEY, tvId)
-                val details = tvShowDetails
-                if (details != null && details.seasons.isNotEmpty()) {
+                val details = repository.getTvShowDetails(API_KEY, tvId)
+                withContext(Dispatchers.Main) {
+                    tvShowDetails = details
+                }
+                if (details.seasons.isNotEmpty()) {
                     val firstRealSeason = details.seasons.firstOrNull { it.season_number > 0 }
                         ?: details.seasons.first()
-                    fetchSeasonDetails(tvId, firstRealSeason.season_number)
+                    val seasonDetail = repository.getSeasonDetails(API_KEY, tvId, firstRealSeason.season_number)
+                    withContext(Dispatchers.Main) {
+                        seasonDetails = seasonDetail
+                    }
                 }
             } catch (e: Exception) {
                 // Handle error
             } finally {
-                isTvDetailLoading = false
+                withContext(Dispatchers.Main) {
+                    isTvDetailLoading = false
+                }
             }
         }
         // Fetch similar TV shows in parallel
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
-                similarTvShows = repository.getSimilarTvShows(API_KEY, tvId)
+                val similar = repository.getSimilarTvShows(API_KEY, tvId)
+                withContext(Dispatchers.Main) {
+                    similarTvShows = similar
+                }
             } catch (_: Exception) {}
         }
     }
 
     fun fetchSeasonDetails(tvId: Int, seasonNumber: Int) {
         isSeasonLoading = true
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
-                seasonDetails = repository.getSeasonDetails(API_KEY, tvId, seasonNumber)
+                val details = repository.getSeasonDetails(API_KEY, tvId, seasonNumber)
+                withContext(Dispatchers.Main) {
+                    seasonDetails = details
+                }
             } catch (e: Exception) {
-                seasonDetails = null
+                withContext(Dispatchers.Main) {
+                    seasonDetails = null
+                }
             } finally {
-                isSeasonLoading = false
+                withContext(Dispatchers.Main) {
+                    isSeasonLoading = false
+                }
             }
         }
     }
@@ -322,14 +386,28 @@ class MovieViewModel @Inject constructor(
         isSearching = true
         searchJob = viewModelScope.launch {
             delay(500L) // debounce
-            try {
-                searchResults = repository.searchMovies(API_KEY, query)
-                tvSearchResults = repository.searchTvShows(API_KEY, query)
-            } catch (_: Exception) {
-                searchResults = emptyList()
-                tvSearchResults = emptyList()
-            } finally {
-                isSearching = false
+            withContext(Dispatchers.IO) {
+                coroutineScope {
+                    try {
+                        val movieSearch = async { repository.searchMovies(API_KEY, query) }
+                        val tvSearch = async { repository.searchTvShows(API_KEY, query) }
+                        val movieResults = movieSearch.await()
+                        val tvResults = tvSearch.await()
+                        withContext(Dispatchers.Main) {
+                            searchResults = movieResults
+                            tvSearchResults = tvResults
+                        }
+                    } catch (_: Exception) {
+                        withContext(Dispatchers.Main) {
+                            searchResults = emptyList()
+                            tvSearchResults = emptyList()
+                        }
+                    } finally {
+                        withContext(Dispatchers.Main) {
+                            isSearching = false
+                        }
+                    }
+                }
             }
         }
     }
@@ -375,8 +453,16 @@ class MovieViewModel @Inject constructor(
     }
 
     // --- Watch History Methods ---
-    fun recordWatch(tmdbId: Int, title: String, posterPath: String?, mediaType: String, season: Int? = null, episode: Int? = null) {
-        viewModelScope.launch {
+    fun recordWatch(
+        tmdbId: Int,
+        title: String,
+        posterPath: String?,
+        mediaType: String,
+        season: Int? = null,
+        episode: Int? = null,
+        rating: Double = 0.0
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.addToHistory(
                 WatchHistoryItem(
                     tmdbId = tmdbId,
@@ -384,14 +470,28 @@ class MovieViewModel @Inject constructor(
                     posterPath = posterPath,
                     mediaType = mediaType,
                     season = season,
-                    episode = episode
+                    episode = episode,
+                    rating = rating,
+                    watchProgress = 0f   // reset progress on new watch
                 )
             )
+            // Removes duplicates — keeps only the latest entry per tmdbId+mediaType
+            repository.removeDuplicateHistory()
+        }
+    }
+
+    /**
+     * Persists the user's watch progress (0.0–1.0) for a history entry.
+     * Called from PlayerScreen when the user leaves the player.
+     */
+    fun updateWatchProgress(historyId: Int, progress: Float) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.updateWatchProgress(historyId, progress.coerceIn(0f, 1f))
         }
     }
 
     fun clearWatchHistory() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.clearHistory()
         }
     }

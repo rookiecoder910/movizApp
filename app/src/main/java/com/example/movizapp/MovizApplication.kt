@@ -15,21 +15,22 @@ class MovizApplication : Application(), ImageLoaderFactory {
         return ImageLoader.Builder(this)
             .memoryCache {
                 MemoryCache.Builder(this)
-                    .maxSizePercent(0.25)
+                    .maxSizePercent(0.30)
                     .build()
             }
             .diskCache {
                 DiskCache.Builder()
                     .directory(cacheDir.resolve("image_cache"))
-                    .maxSizeBytes(50L * 1024 * 1024)
+                    .maxSizeBytes(100L * 1024 * 1024) // 100MB disk cache
                     .build()
             }
             .diskCachePolicy(CachePolicy.ENABLED)
             .memoryCachePolicy(CachePolicy.ENABLED)
             .networkCachePolicy(CachePolicy.ENABLED)
+            .respectCacheHeaders(false) // Always cache TMDB images regardless of headers
             .allowHardware(true)
             .crossfade(true)
-            .crossfade(200)
+            .crossfade(150) // Faster crossfade for snappier feel
             .build()
     }
 }

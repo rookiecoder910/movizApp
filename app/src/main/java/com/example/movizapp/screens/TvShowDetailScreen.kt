@@ -58,6 +58,11 @@ fun TvShowDetailScreen(
     val isLoading = viewModel.isTvDetailLoading
     val isSeasonLoading = viewModel.isSeasonLoading
     val scrollState = rememberScrollState()
+    val headerGradient = remember {
+        Brush.verticalGradient(
+            colors = listOf(Color.Transparent, DarkBackground)
+        )
+    }
 
     if (tvShow == null || isLoading) {
         ShimmerDetailScreen()
@@ -104,9 +109,7 @@ fun TvShowDetailScreen(
                             .height(200.dp)
                             .align(Alignment.BottomStart)
                             .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(Color.Transparent, DarkBackground)
-                                )
+                                    headerGradient
                             )
                     )
 
@@ -140,7 +143,7 @@ fun TvShowDetailScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Star, contentDescription = null, tint = GoldRating, modifier = Modifier.size(18.dp))
                             Text(
-                                text = String.format("%.1f", tvShow.vote_average),
+                                text = remember(tvShow.vote_average) { String.format("%.1f", tvShow.vote_average) },
                                 style = MaterialTheme.typography.titleMedium.copy(color = Color.White),
                                 modifier = Modifier.padding(start = 4.dp)
                             )
@@ -316,7 +319,7 @@ fun TvShowDetailScreen(
                                     AsyncImage(
                                         model = "https://image.tmdb.org/t/p/w185/${similar.poster_path}",
                                         contentDescription = similar.name,
-                                        contentScale = ContentScale.FillBounds,
+                                        contentScale = ContentScale.Crop,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .aspectRatio(2f / 3f)
@@ -368,6 +371,10 @@ fun EpisodeCard(
     seasonNumber: Int,
     navController: NavController
 ) {
+    val onPlayClick = remember(tvId, seasonNumber, episode.episode_number) {
+        { navController.navigate("player/tv/$tvId/$seasonNumber/${episode.episode_number}") }
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(10.dp),
@@ -445,11 +452,7 @@ fun EpisodeCard(
             }
 
             // Play button
-            IconButton(
-                onClick = {
-                    navController.navigate("player/tv/$tvId/$seasonNumber/${episode.episode_number}")
-                }
-            ) {
+            IconButton(onClick = onPlayClick) {
                 Icon(
                     Icons.Default.PlayArrow,
                     contentDescription = "Play Episode",

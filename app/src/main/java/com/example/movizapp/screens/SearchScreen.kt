@@ -35,6 +35,9 @@ import com.example.movizapp.ui.theme.NetflixRed
 import com.example.movizapp.ui.theme.TextGrey
 import com.example.movizapp.viewmodel.MovieViewModel
 
+// Stable constants — avoids Color.copy() allocation per recomposition
+private val SearchRatingBadgeColor = Color(0xB3000000) // Black at 70% alpha
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
@@ -254,7 +257,7 @@ fun SearchResultCard(
                     .align(Alignment.TopEnd)
                     .padding(4.dp)
                     .background(
-                        color = Color.Black.copy(alpha = 0.7f),
+                        color = SearchRatingBadgeColor,
                         shape = RoundedCornerShape(4.dp)
                     )
                     .padding(horizontal = 5.dp, vertical = 2.dp)
@@ -268,7 +271,7 @@ fun SearchResultCard(
                     )
                     Spacer(Modifier.width(2.dp))
                     Text(
-                        text = String.format("%.1f", rating),
+                        text = remember(rating) { String.format("%.1f", rating) },
                         color = Color.White,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.SemiBold

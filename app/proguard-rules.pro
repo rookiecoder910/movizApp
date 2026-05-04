@@ -19,3 +19,21 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# --- Retrofit / Gson ---
+# Keep all API response model classes (Gson uses reflection)
+-keep class com.example.movizapp.retrofit.** { *; }
+-keepattributes Signature
+-keepattributes *Annotation*
+
+# --- Coroutines ---
+-dontwarn kotlinx.coroutines.**
+-keep class kotlinx.coroutines.** { *; }
+
+# --- OkHttp ---
+-dontwarn okhttp3.**
+-dontwarn okio.**
+
+# --- Firebase ---
+-keep class com.google.firebase.** { *; }
+-dontwarn com.google.firebase.**

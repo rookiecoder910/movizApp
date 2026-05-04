@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -19,8 +20,14 @@ private val ShimmerColors = listOf(
     Color(0xFF1A1A1A)
 )
 
+/**
+ * A single shared shimmer brush composable.
+ * IMPORTANT: Call this ONCE at the top of a shimmer loading screen and pass
+ * the result down. This ensures only ONE infinite animation runs instead of
+ * one-per-shimmer-element, dramatically reducing CPU usage during loading.
+ */
 @Composable
-fun ShimmerBrush(): Brush {
+fun rememberShimmerBrush(): Brush {
     val transition = rememberInfiniteTransition(label = "shimmer")
     val translateAnim by transition.animateFloat(
         initialValue = 0f,
@@ -31,16 +38,21 @@ fun ShimmerBrush(): Brush {
         ),
         label = "shimmerTranslate"
     )
-    return Brush.linearGradient(
-        colors = ShimmerColors,
-        start = Offset(translateAnim - 200f, translateAnim - 200f),
-        end = Offset(translateAnim, translateAnim)
-    )
+    return remember(translateAnim) {
+        Brush.linearGradient(
+            colors = ShimmerColors,
+            start = Offset(translateAnim - 200f, translateAnim - 200f),
+            end = Offset(translateAnim, translateAnim)
+        )
+    }
 }
 
+// Keep for legacy compatibility — delegates to the shared version
 @Composable
-fun ShimmerPosterCard(modifier: Modifier = Modifier) {
-    val brush = ShimmerBrush()
+fun ShimmerBrush(): Brush = rememberShimmerBrush()
+
+@Composable
+fun ShimmerPosterCard(brush: Brush, modifier: Modifier = Modifier) {
     Column(modifier = modifier.width(140.dp)) {
         Box(
             modifier = Modifier
@@ -61,8 +73,7 @@ fun ShimmerPosterCard(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun ShimmerHeroBanner() {
-    val brush = ShimmerBrush()
+fun ShimmerHeroBanner(brush: Brush) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -71,21 +82,26 @@ fun ShimmerHeroBanner() {
     )
 }
 
+/**
+ * ShimmerRow: creates ONE shared brush and passes it to all 4 cards.
+ * Previously each card had its own animation — now it's just 1.
+ */
 @Composable
 fun ShimmerRow() {
+    val brush = rememberShimmerBrush()
     Row(
         modifier = Modifier.padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         repeat(4) {
-            ShimmerPosterCard()
+            ShimmerPosterCard(brush = brush)
         }
     }
 }
 
 @Composable
 fun ShimmerSearchResult() {
-    val brush = ShimmerBrush()
+    val brush = rememberShimmerBrush()
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -118,9 +134,13 @@ fun ShimmerSearchResult() {
     }
 }
 
+/**
+ * ShimmerDetailScreen: creates ONE shared brush for the entire detail loading screen.
+ * All elements share a single animation tick — minimal CPU overhead.
+ */
 @Composable
 fun ShimmerDetailScreen() {
-    val brush = ShimmerBrush()
+    val brush = rememberShimmerBrush()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -208,4 +228,3 @@ fun ShimmerDetailScreen() {
         }
     }
 }
-

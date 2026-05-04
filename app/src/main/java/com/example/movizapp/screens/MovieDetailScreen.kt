@@ -61,21 +61,28 @@ fun MovieDetailScreen(
     val isLoading = viewModel.isDetailLoading
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+    val headerGradient = remember {
+        Brush.verticalGradient(
+            colors = listOf(Color.Transparent, DarkBackground)
+        )
+    }
 
     if (movie == null || isLoading) {
         ShimmerDetailScreen()
         return
     }
 
-    val shareMovie: () -> Unit = {
-        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(
-                Intent.EXTRA_TEXT,
-                "Check out: ${movie.title}! (https://www.themoviedb.org/movie/${movie.id})"
-            )
+    val shareMovie: () -> Unit = remember(movie.id) {
+        {
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(
+                    Intent.EXTRA_TEXT,
+                    "Check out: ${movie.title}! (https://www.themoviedb.org/movie/${movie.id})"
+                )
+            }
+            context.startActivity(Intent.createChooser(shareIntent, "Share Movie"))
         }
-        context.startActivity(Intent.createChooser(shareIntent, "Share Movie"))
     }
 
     val isWatchlisted by viewModel.isInWatchlist(movie.id, "movie").collectAsState()
@@ -114,9 +121,7 @@ fun MovieDetailScreen(
                             .height(200.dp)
                             .align(Alignment.BottomStart)
                             .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(Color.Transparent, DarkBackground)
-                                )
+                                headerGradient
                             )
                     )
 
@@ -155,7 +160,7 @@ fun MovieDetailScreen(
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
-                                text = String.format("%.1f", movie.vote_average),
+                                text = remember(movie.vote_average) { String.format("%.1f", movie.vote_average) },
                                 style = MaterialTheme.typography.titleMedium.copy(color = Color.White),
                                 modifier = Modifier.padding(start = 4.dp)
                             )
@@ -320,7 +325,7 @@ fun MovieDetailScreen(
                                         AsyncImage(
                                             model = "https://image.tmdb.org/t/p/w185/${similar.poster_path}",
                                             contentDescription = similar.title,
-                                            contentScale = ContentScale.FillBounds,
+                                            contentScale = ContentScale.Crop,
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .aspectRatio(2f / 3f)

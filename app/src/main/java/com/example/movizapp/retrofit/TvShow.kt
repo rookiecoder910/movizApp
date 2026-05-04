@@ -1,5 +1,8 @@
 package com.example.movizapp.retrofit
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class TvShow(
     val id: Int,
     val name: String,

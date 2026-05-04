@@ -12,7 +12,7 @@ import com.example.movizapp.retrofit.Movie
 
 @Database(
     entities = [Movie::class, WatchlistItem::class, WatchHistoryItem::class],
-    version = 4
+    version = 5
 )
 abstract class MoviesDb : RoomDatabase() {
     abstract val movieDao: MovieDAO
@@ -64,6 +64,22 @@ abstract class MoviesDb : RoomDatabase() {
             }
         }
 
+        val MIGRATION_4_5: Migration = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Add watchProgress (0.0–1.0) and rating for the Continue Watching card UI
+                db.execSQL("ALTER TABLE watch_history_table ADD COLUMN watchProgress REAL NOT NULL DEFAULT 0.0")
+                db.execSQL("ALTER TABLE watch_history_table ADD COLUMN rating REAL NOT NULL DEFAULT 0.0")
+                // Remove duplicates on migration (keep latest per tmdbId+mediaType)
+                db.execSQL("""
+                    DELETE FROM watch_history_table 
+                    WHERE id NOT IN (
+                        SELECT MAX(id) FROM watch_history_table 
+                        GROUP BY tmdbId, mediaType
+                    )
+                """.trimIndent())
+            }
+        }
+
         fun getInstance(context: Context): MoviesDb {
             synchronized(this) {
                 var instance = INSTANCE
@@ -73,7 +89,7 @@ abstract class MoviesDb : RoomDatabase() {
                         MoviesDb::class.java,
                         "movies_db"
                     )
-                        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                         .build()
                     INSTANCE = instance
                 }

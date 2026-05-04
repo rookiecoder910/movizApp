@@ -40,7 +40,7 @@ fun TvShowItem(
                     "https://image.tmdb.org/t/p/w185/${tvShow.poster_path}"
                 else null,
                 contentDescription = tvShow.name,
-                contentScale = ContentScale.FillBounds,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .width(100.dp)
                     .aspectRatio(2f / 3f)

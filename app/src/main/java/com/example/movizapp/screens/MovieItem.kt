@@ -40,7 +40,7 @@ fun MovieItem(
             AsyncImage(
                 model = "https://image.tmdb.org/t/p/w185/${movie.poster_path}",
                 contentDescription = movie.title,
-                contentScale = ContentScale.FillBounds,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .width(100.dp)
                     .aspectRatio(2f / 3f)

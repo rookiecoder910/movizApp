@@ -13,6 +13,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import okhttp3.Cache
 import okhttp3.CacheControl
+import okhttp3.ConnectionPool
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -29,7 +30,7 @@ object AppModule {
     @Singleton
     fun provideOkHttpClient(@ApplicationContext context: Context): OkHttpClient {
         val cacheDir = File(context.cacheDir, "http_cache")
-        val cache = Cache(cacheDir, 10L * 1024 * 1024)
+        val cache = Cache(cacheDir, 25L * 1024 * 1024) // 25MB HTTP cache
 
         val cacheInterceptor = Interceptor { chain ->
             val response = chain.proceed(chain.request())
@@ -61,11 +62,12 @@ object AppModule {
 
         return OkHttpClient.Builder()
             .cache(cache)
+            .connectionPool(ConnectionPool(5, 5, TimeUnit.MINUTES))
             .addInterceptor(offlineCacheInterceptor)
             .addNetworkInterceptor(cacheInterceptor)
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
             .build()
     }

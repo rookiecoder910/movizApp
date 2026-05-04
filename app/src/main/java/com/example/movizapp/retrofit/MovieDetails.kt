@@ -1,7 +1,9 @@
 package com.example.movizapp.retrofit
 
+import androidx.compose.runtime.Immutable
 import androidx.room.PrimaryKey
 
+@Immutable
 data class MovieDetails(
     @PrimaryKey
     val id: Int,
@@ -22,6 +24,7 @@ data class MovieDetails(
     val budget: Long?,
     val revenue: Long?
 )
+@Immutable
 data class Genre(
     val id: Int, val name: String
 )

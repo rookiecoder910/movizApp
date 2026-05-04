@@ -46,6 +46,12 @@ import com.example.movizapp.ui.theme.NetflixRed
 import com.example.movizapp.ui.theme.TextGrey
 import com.example.movizapp.viewmodel.MovieViewModel
 
+// Stable file-level constants — avoids Color.copy() allocation on every recomposition
+// of PosterCard items during LazyRow scrolling (runs at ~60fps)
+private val PosterRatingBgColor = Color(0xBF000000)      // Black at 75% alpha
+private val PageIndicatorInactive = Color(0x66FFFFFF)    // White at 40% alpha
+private val OfflineBannerBg = Color(0xE6E50914)          // NetflixRed at 90% alpha
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MovieScreen(
@@ -97,13 +103,14 @@ fun MovieScreen(
 
     if (movies.isEmpty() && tvShows.isEmpty()) {
         // Shimmer loading state
+        val shimmerBrush = rememberShimmerBrush()
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .background(DarkBackground),
             contentPadding = PaddingValues(bottom = 80.dp)
         ) {
-            item { ShimmerHeroBanner() }
+            item { ShimmerHeroBanner(brush = shimmerBrush) }
             item {
                 Spacer(Modifier.height(24.dp))
                 Box(
@@ -112,7 +119,7 @@ fun MovieScreen(
                         .width(160.dp)
                         .height(20.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(ShimmerBrush())
+                        .background(shimmerBrush)
                 )
                 Spacer(Modifier.height(12.dp))
             }
@@ -125,7 +132,7 @@ fun MovieScreen(
                         .width(160.dp)
                         .height(20.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(ShimmerBrush())
+                        .background(shimmerBrush)
                 )
                 Spacer(Modifier.height(12.dp))
             }
@@ -153,7 +160,7 @@ fun MovieScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(NetflixRed.copy(alpha = 0.9f))
+                    .background(OfflineBannerBg)
                     .padding(vertical = 6.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -185,25 +192,10 @@ fun MovieScreen(
                 SectionHeader(title = "Continue Watching")
             }
             item {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(recentHistory, key = { it.id }) { historyItem ->
-                        PosterCard(
-                            posterPath = historyItem.posterPath,
-                            title = historyItem.title,
-                            rating = 0.0,
-                            onClick = {
-                                if (historyItem.mediaType == "movie") {
-                                    navController.navigate("movieDetail/${historyItem.tmdbId}")
-                                } else {
-                                    navController.navigate("tvDetail/${historyItem.tmdbId}")
-                                }
-                            }
-                        )
-                    }
-                }
+                ContinueWatchingRow(
+                    items = recentHistory,
+                    navController = navController
+                )
             }
         }
 
@@ -410,10 +402,17 @@ fun HeroPager(movies: List<Movie>, navController: NavController) {
         }
     }
 
+    val heroGradient = remember {
+        Brush.verticalGradient(
+            colors = listOf(Color.Transparent, DarkBackground)
+        )
+    }
+
     Box(modifier = Modifier.fillMaxWidth().height(440.dp)) {
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            beyondViewportPageCount = 1
         ) { page ->
             val movie = movies[page]
             Box(
@@ -422,7 +421,7 @@ fun HeroPager(movies: List<Movie>, navController: NavController) {
                     .clickable { navController.navigate("movieDetail/${movie.id}") }
             ) {
                 AsyncImage(
-                    model = "https://image.tmdb.org/t/p/w500/${movie.poster_path}",
+                    model = "https://image.tmdb.org/t/p/w780/${movie.poster_path}",
                     contentDescription = movie.title,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
@@ -434,11 +433,7 @@ fun HeroPager(movies: List<Movie>, navController: NavController) {
                         .fillMaxWidth()
                         .height(200.dp)
                         .align(Alignment.BottomCenter)
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, DarkBackground)
-                            )
-                        )
+                        .background(heroGradient)
                 )
 
                 // Title overlay
@@ -464,7 +459,7 @@ fun HeroPager(movies: List<Movie>, navController: NavController) {
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            text = String.format("%.1f", movie.vote_average),
+                            text = remember(movie.vote_average) { String.format("%.1f", movie.vote_average) },
                             color = Color.White,
                             style = MaterialTheme.typography.titleMedium
                         )
@@ -493,7 +488,7 @@ fun HeroPager(movies: List<Movie>, navController: NavController) {
                         .clip(RoundedCornerShape(50))
                         .background(
                             if (pagerState.currentPage == index) NetflixRed
-                            else Color.White.copy(alpha = 0.4f)
+                            else PageIndicatorInactive
                         )
                 )
             }
@@ -518,6 +513,14 @@ fun PosterCard(
     rating: Double,
     onClick: () -> Unit
 ) {
+    val bottomGradient = remember {
+        Brush.verticalGradient(
+            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f))
+        )
+    }
+    val ratingBgColor = remember { Color.Black.copy(alpha = 0.75f) }
+    val formattedRating = remember(rating) { String.format("%.1f", rating) }
+
     Column(
         modifier = Modifier
             .width(140.dp)
@@ -532,7 +535,7 @@ fun PosterCard(
             AsyncImage(
                 model = if (posterPath != null) "https://image.tmdb.org/t/p/w185/$posterPath" else null,
                 contentDescription = title,
-                contentScale = ContentScale.FillBounds,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
 
@@ -542,7 +545,7 @@ fun PosterCard(
                     .align(Alignment.TopEnd)
                     .padding(6.dp)
                     .background(
-                        color = Color.Black.copy(alpha = 0.75f),
+                        color = ratingBgColor,
                         shape = RoundedCornerShape(6.dp)
                     )
                     .padding(horizontal = 6.dp, vertical = 3.dp)
@@ -556,7 +559,7 @@ fun PosterCard(
                     )
                     Spacer(Modifier.width(3.dp))
                     Text(
-                        text = String.format("%.1f", rating),
+                        text = formattedRating,
                         color = Color.White,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold
@@ -570,11 +573,7 @@ fun PosterCard(
                     .fillMaxWidth()
                     .height(60.dp)
                     .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f))
-                        )
-                    )
+                    .background(bottomGradient)
             )
         }
 

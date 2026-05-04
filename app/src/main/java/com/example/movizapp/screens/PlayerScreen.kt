@@ -79,13 +79,19 @@ fun PlayerScreen(
         } else {
             viewModel.tvShowDetails?.poster_path
         }
+        val rating = if (mediaType == "movie") {
+            viewModel.movieDetails?.vote_average ?: 0.0
+        } else {
+            viewModel.tvShowDetails?.vote_average ?: 0.0
+        }
         viewModel.recordWatch(
             tmdbId = tmdbId,
             title = title,
             posterPath = posterPath,
             mediaType = mediaType,
             season = season,
-            episode = episode
+            episode = episode,
+            rating = rating
         )
     }
 

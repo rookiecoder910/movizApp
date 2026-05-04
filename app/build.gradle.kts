@@ -67,6 +67,11 @@ android {
     }
 }
 
+composeCompiler {
+    stabilityConfigurationFile = project.layout.projectDirectory.file("compose_compiler_config.conf")
+    enableStrongSkippingMode = true
+}
+
 // ✅ Changed to JVM 17
 kotlin {
     compilerOptions {
